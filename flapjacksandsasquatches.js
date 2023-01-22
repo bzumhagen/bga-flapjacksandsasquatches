@@ -18,7 +18,8 @@
 define([
     "dojo","dojo/_base/declare",
     "ebg/core/gamegui",
-    "ebg/counter"
+    "ebg/counter",
+    "ebg/stock"
 ],
 function (dojo, declare) {
     return declare("bgagame.flapjacksandsasquatches", ebg.core.gamegui, {
@@ -28,7 +29,11 @@ function (dojo, declare) {
             // Here, you can init the global variables of your user interface
             // Example:
             // this.myGlobalValue = 0;
-
+            
+            console.log('cards constructor');
+            this.cardWidth = 358;
+            this.cardHeight = 500;
+            this.redCardSpriteUrl = g_gamethemeurl + 'img/red_cards.jpg'
         },
         
         /*
@@ -57,7 +62,21 @@ function (dojo, declare) {
             }
             
             // TODO: Set up your game interface here, according to "gamedatas"
-            
+
+            // Player hand
+            this.playerHand = new ebg.stock(); // new stock object for hand
+            this.playerHand.create( this, $('myhand'), this.cardWidth, this.cardHeight );
+            this.playerHand.image_items_per_row = 8;
+
+            // Create red cards types:
+            for( var key in gamedatas.redCards ) {
+                let redCard = gamedatas.redCards[key]
+                console.log("Adding red card " + redCard.id + " with name " + redCard.name)
+                this.playerHand.addItemType(redCard.id, redCard.id, this.redCardSpriteUrl, redCard.id-1);
+            }
+
+            // Test 
+            this.playerHand.addToStockWithId(40, 42);
  
             // Setup game notifications to handle (see "setupNotifications" method below)
             this.setupNotifications();

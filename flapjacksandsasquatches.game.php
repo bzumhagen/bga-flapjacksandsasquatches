@@ -107,7 +107,8 @@ class FlapjacksAndSasquatches extends Table
     */
     protected function getAllDatas()
     {
-        $result = array();
+        $result = array(); 
+        $result ['redCards'] = $this->red_cards; 
     
         $current_player_id = self::getCurrentPlayerId();    // !! We must only return informations visible by this player !!
     
