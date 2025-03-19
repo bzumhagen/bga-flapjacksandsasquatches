@@ -25,40 +25,49 @@
     Please REMOVE this comment before publishing your game on BGA
 -->
 
-
-This is your game interface. I edited this HTML in my ".tpl" file.
-
-
-<script type="text/javascript">
-
-// Javascript HTML templates
-
-/*
-// Example:
-var jstpl_some_game_item='<div class="my_game_item" id="my_game_item_${MY_ITEM_ID}"></div>';
-
-*/
-
-</script>  
-
-<div id="playertables">
-
-    <!-- BEGIN player -->
-    <div class="playertable whiteblock playertable_{DIR}">
-        <div class="playertablename" style="color:#{PLAYER_COLOR}">
-            {PLAYER_NAME}
-        </div>
-        <div class="playertablecard" id="playertablecard_{PLAYER_ID}">
-        </div>
+<div id="flapjacksandsasquatches_game_area">
+    <!-- CENTER AREA -->
+    <div id="center_area" class="whiteblock">
+        <div id="tree_deck" class="deck"></div>
+        <div id="jack_deck" class="deck"></div>
+        <div id="discard_pile" class="deck"></div>
     </div>
-    <!-- END player -->
 
+    <!-- PLAYER AREAS -->
+    <div id="player_areas">
+        <!-- BEGIN player -->
+        <div id="player_{PLAYER_ID}_area" class="player_area whiteblock playertable_{DIR}">
+            <div class="playertablename" style="color:#{PLAYER_COLOR}">
+                {PLAYER_NAME}
+            </div>
+            <div class="player_hand" id="player_hand_{PLAYER_ID}">
+                <!-- Player hand will be populated by JavaScript -->
+            </div>
+            <div class="player_play_area">
+                <div class="tree_area" id="tree_area_{PLAYER_ID}"></div>
+                <div class="equipment_area" id="equipment_area_{PLAYER_ID}"></div>
+                <div class="cut_pile" id="cut_pile_{PLAYER_ID}"></div>
+            </div>
+        </div>
+        <!-- END player -->
+    </div>
+
+    <!-- Current player's hand -->
     <div id="myhand_wrap" class="whiteblock">
         <h3>{MY_HAND}</h3>
         <div id="myhand">
         </div>
     </div>
-
 </div>
+
+<script type="text/javascript">
+    // Javascript HTML templates
+    var jstpl_player_board = '\<div class="cp_board">\
+        <div class="player_name">${name}</div>\
+        <div class="player_score">${score}</div>\
+    </div>';
+
+    var jstpl_chop_token = '\<div class="chop_token" id="chop_token_${token_id}"></div>';
+</script>
 
 {OVERALL_GAME_FOOTER}

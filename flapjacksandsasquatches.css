@@ -67,13 +67,117 @@
     }
 */
 
+/* Game area */
+#flapjacksandsasquatches_game_area {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+/* Center area */
+#center_area {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    gap: 20px;
+}
+
+/* Decks */
+.deck {
+    width: 72px;
+    height: 96px;
+    background: #ddd;
+    border: 2px solid #999;
+    border-radius: 5px;
+    cursor: pointer;
+    background-image: url('img/cards.jpg'); /* Using existing card style */
+    background-size: cover;
+}
+
+/* Player areas */
+#player_areas {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.player_area {
+    padding: 10px;
+    margin: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+}
+
+.player_name {
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.player_hand {
+    min-height: 120px;
+    margin: 10px 0;
+    padding: 10px;
+    background: rgba(0,0,0,0.1);
+    border-radius: 5px;
+}
+
+.player_play_area {
+    display: flex;
+    gap: 20px;
+    margin-top: 10px;
+}
+
+.tree_area, .equipment_area, .cut_pile {
+    min-height: 96px;
+    min-width: 72px;
+    border: 1px dashed #999;
+    border-radius: 5px;
+    padding: 10px;
+}
+
+/* Card styles */
+.card {
+    width: 72px;
+    height: 96px;
+    background: white;
+    border: 1px solid #999;
+    border-radius: 5px;
+    position: relative;
+    cursor: pointer;
+    transition: transform 0.2s;
+    background-image: url('img/cards.jpg'); /* Using existing card style */
+    background-size: cover;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+/* Chop tokens */
+.chop_token {
+    width: 20px;
+    height: 20px;
+    background: #8B4513;
+    border-radius: 50%;
+    position: absolute;
+    top: 5px;
+    right: 5px;
+}
+
+/* Preserve existing playertablecard style */
 .playertablecard {
     display: inline-block;
     position: relative;
     margin-top: 5px;
     width: 72px;
     height: 96px;
-    background-image: url('img/cards.jpg'); /* temp hack to see it */
+    background-image: url('img/cards.jpg');
 }
 
 

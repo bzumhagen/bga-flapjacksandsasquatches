@@ -26,14 +26,19 @@ function (dojo, declare) {
         constructor: function(){
             console.log('flapjacksandsasquatches constructor');
               
-            // Here, you can init the global variables of your user interface
-            // Example:
-            // this.myGlobalValue = 0;
+            // Card dimensions
+            this.cardWidth = 72;
+            this.cardHeight = 96;
             
-            console.log('cards constructor');
-            this.cardWidth = 358;
-            this.cardHeight = 500;
-            this.redCardSpriteUrl = g_gamethemeurl + 'img/red_cards.jpg'
+            // Card sprite URLs
+            this.redCardSpriteUrl = g_gamethemeurl + 'img/red_cards.jpg';
+            this.treeCardSpriteUrl = g_gamethemeurl + 'img/tree_cards.jpg';
+            
+            // Stock objects for different card types
+            this.playerHand = null;
+            this.treeDeck = null;
+            this.jackDeck = null;
+            this.discardPile = null;
         },
         
         /*
@@ -57,31 +62,62 @@ function (dojo, declare) {
             for( var player_id in gamedatas.players )
             {
                 var player = gamedatas.players[player_id];
-                         
-                // TODO: Setting up players boards if needed
+                this.setupPlayerArea(player_id, player);
             }
             
-            // TODO: Set up your game interface here, according to "gamedatas"
-
-            // Player hand
-            this.playerHand = new ebg.stock(); // new stock object for hand
-            this.playerHand.create( this, $('myhand'), this.cardWidth, this.cardHeight );
-            this.playerHand.image_items_per_row = 8;
-
-            // Create red cards types:
-            for( var key in gamedatas.redCards ) {
-                let redCard = gamedatas.redCards[key]
-                console.log("Adding red card " + redCard.id + " with name " + redCard.name)
-                this.playerHand.addItemType(redCard.id, redCard.id, this.redCardSpriteUrl, redCard.id-1);
-            }
-
-            // Test 
-            this.playerHand.addToStockWithId(40, 42);
- 
-            // Setup game notifications to handle (see "setupNotifications" method below)
+            // Setup decks
+            this.setupDecks(gamedatas);
+            
+            // Setup game notifications
             this.setupNotifications();
 
             console.log( "Ending game setup" );
+        },
+
+        setupPlayerArea: function(player_id, player) {
+            // Set player name and score
+            dojo.place(this.format_block('jstpl_player_board', {
+                name: player.name,
+                score: 0
+            }), 'player_' + player_id + '_area');
+            
+            // Setup player hand if it's the current player
+            if (player_id == this.player_id) {
+                this.playerHand = new ebg.stock();
+                this.playerHand.create(this, $('myhand'), this.cardWidth, this.cardHeight);
+                this.playerHand.image_items_per_row = 5;
+                
+                // Add card types to hand
+                for (var key in gamedatas.redCards) {
+                    let redCard = gamedatas.redCards[key];
+                    this.playerHand.addItemType(redCard.id, redCard.id, this.redCardSpriteUrl, redCard.id-1);
+                }
+            }
+        },
+
+        setupDecks: function(gamedatas) {
+            // Setup Tree Deck
+            this.treeDeck = new ebg.stock();
+            this.treeDeck.create(this, $('tree_deck'), this.cardWidth, this.cardHeight);
+            
+            // Setup Jack Deck
+            this.jackDeck = new ebg.stock();
+            this.jackDeck.create(this, $('jack_deck'), this.cardWidth, this.cardHeight);
+            
+            // Setup Discard Pile
+            this.discardPile = new ebg.stock();
+            this.discardPile.create(this, $('discard_pile'), this.cardWidth, this.cardHeight);
+            
+            // Add card types to decks
+            for (var key in gamedatas.treeCards) {
+                let treeCard = gamedatas.treeCards[key];
+                this.treeDeck.addItemType(treeCard.id, treeCard.id, this.treeCardSpriteUrl, treeCard.id-1);
+            }
+            
+            for (var key in gamedatas.redCards) {
+                let redCard = gamedatas.redCards[key];
+                this.jackDeck.addItemType(redCard.id, redCard.id, this.redCardSpriteUrl, redCard.id-1);
+            }
         },
        
 
@@ -97,20 +133,25 @@ function (dojo, declare) {
             
             switch( stateName )
             {
+                case 'gameSetup':
+                    // Initial game setup state
+                    break;
+                    
+                case 'playerTurn':
+                    // Player's turn state
+                    this.onEnteringPlayerTurn();
+                    break;
+            }
+        },
+
+        onEnteringPlayerTurn: function() {
+            // Enable drawing from decks
+            this.treeDeck.setSelectionMode(1);
+            this.jackDeck.setSelectionMode(1);
             
-            /* Example:
-            
-            case 'myGameState':
-            
-                // Show some HTML block at this game state
-                dojo.style( 'my_html_block_id', 'display', 'block' );
-                
-                break;
-           */
-           
-           
-            case 'dummmy':
-                break;
+            // Enable playing cards from hand
+            if (this.playerHand) {
+                this.playerHand.setSelectionMode(1);
             }
         },
 
@@ -243,17 +284,14 @@ function (dojo, declare) {
         {
             console.log( 'notifications subscriptions setup' );
             
-            // TODO: here, associate your game notifications with local methods
+            // Card played notification
+            dojo.subscribe('cardPlayed', this, "notif_cardPlayed");
             
-            // Example 1: standard notification handling
-            // dojo.subscribe( 'cardPlayed', this, "notif_cardPlayed" );
+            // Card drawn notification
+            dojo.subscribe('cardDrawn', this, "notif_cardDrawn");
             
-            // Example 2: standard notification handling + tell the user interface to wait
-            //            during 3 seconds after calling the method in order to let the players
-            //            see what is happening in the game.
-            // dojo.subscribe( 'cardPlayed', this, "notif_cardPlayed" );
-            // this.notifqueue.setSynchronous( 'cardPlayed', 3000 );
-            // 
+            // Tree chopped notification
+            dojo.subscribe('treeChopped', this, "notif_treeChopped");
         },  
         
         // TODO: from this point and below, you can write your game notifications handling methods
@@ -272,5 +310,56 @@ function (dojo, declare) {
         },    
         
         */
+
+        onCardPlayed: function(evt) {
+            console.log('onCardPlayed');
+            
+            // Preventing default browser reaction
+            dojo.stopEvent(evt);
+            
+            // Check that this action is possible
+            if (!this.checkAction('playCard')) {
+                return;
+            }
+            
+            // Get the card id from the event
+            var cardId = evt.currentTarget.id;
+            
+            // Make the server call
+            this.ajaxcall("/flapjacksandsasquatches/flapjacksandsasquatches/playCard.html", {
+                lock: true,
+                card_id: cardId
+            }, this, function(result) {
+                // Success callback
+            });
+        },
+        
+        notif_cardPlayed: function(notif) {
+            console.log('notif_cardPlayed', notif);
+            
+            // Remove card from player's hand
+            if (this.playerHand) {
+                this.playerHand.removeFromStockById(notif.args.card_id);
+            }
+            
+            // Add card to appropriate area based on type
+            // TODO: Implement based on card type
+        },
+        
+        notif_cardDrawn: function(notif) {
+            console.log('notif_cardDrawn', notif);
+            
+            // Add card to player's hand
+            if (this.playerHand) {
+                this.playerHand.addToStockWithId(notif.args.card_id, notif.args.card_id);
+            }
+        },
+        
+        notif_treeChopped: function(notif) {
+            console.log('notif_treeChopped', notif);
+            
+            // Add chop token to tree
+            // TODO: Implement chop token visualization
+        }
    });             
 });
