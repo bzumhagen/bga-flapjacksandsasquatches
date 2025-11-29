@@ -345,17 +345,9 @@ define([
       // Deselect the card
       this.playerHand.unselectAll();
 
-      this.ajaxcall(
-        "/flapjacksandsasquatches/flapjacksandsasquatches/playCard.html",
-        {
-          lock: true,
-          card_id: card_id,
-        },
-        this,
-        function (result) {
-          // Success
-        },
-      );
+      this.bgaPerformAction("playCard", {
+        card_id: card_id,
+      });
     },
 
     onDiscardCard: function (evt) {
@@ -378,17 +370,9 @@ define([
       // Deselect the card
       this.playerHand.unselectAll();
 
-      this.ajaxcall(
-        "/flapjacksandsasquatches/flapjacksandsasquatches/discardCard.html",
-        {
-          lock: true,
-          card_id: card_id,
-        },
-        this,
-        function (result) {
-          // Success
-        },
-      );
+      this.bgaPerformAction("discardCard", {
+        card_id: card_id,
+      });
     },
 
     onPlayerSelected: function (evt) {
@@ -405,17 +389,9 @@ define([
         .replace("player_", "")
         .replace("_area", "");
 
-      this.ajaxcall(
-        "/flapjacksandsasquatches/flapjacksandsasquatches/selectTarget.html",
-        {
-          lock: true,
-          target_id: target_id,
-        },
-        this,
-        function (result) {
-          // Success
-        },
-      );
+      this.bgaPerformAction("selectTarget", {
+        target_id: target_id,
+      });
     },
 
     onPassReaction: function (evt) {
@@ -427,16 +403,7 @@ define([
         return;
       }
 
-      this.ajaxcall(
-        "/flapjacksandsasquatches/flapjacksandsasquatches/passReaction.html",
-        {
-          lock: true,
-        },
-        this,
-        function (result) {
-          // Success
-        },
-      );
+      this.bgaPerformAction("passReaction");
     },
 
     ///////////////////////////////////////////////////

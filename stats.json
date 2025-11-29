@@ -1,0 +1,41 @@
+{
+  "table": {
+    "rounds_played": {
+      "id": 10,
+      "name": "Number of rounds",
+      "type": "int"
+    },
+    "total_trees_chopped": {
+      "id": 11,
+      "name": "Total trees chopped",
+      "type": "int"
+    }
+  },
+  "player": {
+    "trees_chopped": {
+      "id": 10,
+      "name": "Trees chopped",
+      "type": "int"
+    },
+    "chops_rolled": {
+      "id": 11,
+      "name": "Total chops rolled",
+      "type": "int"
+    },
+    "axes_broken": {
+      "id": 12,
+      "name": "Axes broken",
+      "type": "int"
+    },
+    "sasquatch_cards_played": {
+      "id": 13,
+      "name": "Sasquatch cards played",
+      "type": "int"
+    },
+    "reaction_cards_played": {
+      "id": 14,
+      "name": "Reaction cards played",
+      "type": "int"
+    }
+  }
+}
