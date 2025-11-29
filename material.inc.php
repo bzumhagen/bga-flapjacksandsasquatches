@@ -3,7 +3,7 @@
  *------
  * BGA framework: © Gregory Isabelli <gisabelli@boardgamearena.com> & Emmanuel Colin <ecolin@boardgamearena.com>
  * FlapjacksAndSasquatches implementation : © <Your name here> <Your email address here>
- * 
+ *
  * This code has been produced on the BGA studio platform for use on http://boardgamearena.com.
  * See http://en.boardgamearena.com/#!doc/Studio for more information.
  * -----
@@ -13,7 +13,7 @@
  * FlapjacksAndSasquatches game material description
  *
  * Here, you can describe the material of your game with PHP variables.
- *   
+ *
  * This file is loaded in your game logic class constructor, ie these variables
  * are available everywhere in your game logic code.
  *
@@ -274,5 +274,62 @@ $this->red_cards = [
   ]
  ];
 
+$this->tree_cards = [
+  'norway_pine' => [
+    'id' => 1,
+    'name' => clienttranslate("Norway Pine"),
+    'chops_required' => 4,
+    'points' => 4
+  ],
+  'american_elm' => [
+    'id' => 2,
+    'name' => clienttranslate("American Elm"),
+    'chops_required' => 8,
+    'points' => 8
+  ],
+  'cottonwood' => [
+    'id' => 3,
+    'name' => clienttranslate("Cottonwood"),
+    'chops_required' => 5,
+    'points' => 6
+  ],
+  'mighty_oak' => [
+    'id' => 4,
+    'name' => clienttranslate("Mighty Oak"),
+    'chops_required' => 9,
+    'points' => 12
+  ],
+  'red_oak' => [
+    'id' => 5,
+    'name' => clienttranslate("Red Oak"),
+    'chops_required' => 6,
+    'points' => 7
+  ],
+  'river_birch' => [
+    'id' => 6,
+    'name' => clienttranslate("River Birch"),
+    'chops_required' => 4,
+    'points' => 5
+  ],
+  'silver_maple' => [
+    'id' => 7,
+    'name' => clienttranslate("Silver Maple"),
+    'chops_required' => 7,
+    'points' => 8
+  ]
+];
 
-
+// Game constants
+$this->game_constants = [
+  'winning_score' => 21,
+  'starting_hand_size' => 3,
+  'dice_result_break_min' => 1,
+  'dice_result_break_max' => 2,
+  'dice_result_miss' => 3,
+  'dice_result_chop_min' => 4,
+  'dice_result_chop_max' => 6,
+  'axe_break_threshold' => 3,  // Number of breaks in one roll that breaks an axe
+  'base_axe_dice' => 3,  // Standard axe rolls 3 dice
+  'long_saw_dice' => 5,  // Long Saw & Partner rolls 5 dice
+  'long_saw_break_threshold' => 4  // Long Saw breaks on 4+ misses/breaks combined
+];
