@@ -17,305 +17,290 @@
  * This file is loaded in your game logic class constructor, ie these variables
  * are available everywhere in your game logic code.
  *
+ * NOTE: Card counts are based on physical card count from owner's copy.
+ * Current total: 133 cards (100 red + 33 trees)
+ * Expected total per game box: 136 cards
+ * TODO: Verify actual card counts with complete/official copy (missing 3 cards)
+ * Likely candidates for adjustment: Chopping Axe, Winded, Flapjacks, or Debunk
  */
 
-
-/*
-
-Example:
-
-$this->card_types = array(
-    1 => array( "card_name" => ...,
-                ...
-              )
-);
-
-*/
+// Red cards (Jack Deck) - card definitions with quantities
 $this->red_cards = [
   'equipment_chopping_axe' => [
     'id' => 1,
     'type' => 'equipment',
+    'subtype' => 'axe',
     'name' => clienttranslate("Chopping Axe"),
-    'tooltip' => clienttranslate("Lets you make a chopping roll.")
+    'tooltip' => clienttranslate("Lets you make a chopping roll."),
+    'qty' => 5
   ],
-  'plus_minus_chopping_axe' => [
+  'plus_minus_winded' => [
     'id' => 2,
     'type' => 'plus_minus',
     'name' => clienttranslate("Winded"),
-    'tooltip' => clienttranslate("Subtract two dice from your next chopping roll.")
-  ],
-  'action_beavers' => [
-    'id' => 3,
-    'type' => 'action',
-    'name' => clienttranslate("Beavers"),
-    'tooltip' => clienttranslate("Discard any one player's tree currently in play.")
-  ],
-  'sasquatch_sasquatch_rampage' => [
-    'id' => 4,
-    'type' => 'sasquatch',
-    'name' => clienttranslate("Sasquatch Rampage"),
-    'tooltip' => clienttranslate("All players discard their hands and draw a new hand at the beginning of their next turn.")
+    'tooltip' => clienttranslate("Subtract two dice from your next chopping roll."),
+    'modifier' => -2,
+    'persistent' => false,
+    'qty' => 3
   ],
   'help_apprentice' => [
     'id' => 5,
     'type' => 'help',
     'name' => clienttranslate("Apprentice"),
-    'tooltip' => clienttranslate("Roll one separate die in addition to your chopping roll each turn.")
+    'tooltip' => clienttranslate("Roll one separate die in addition to your chopping roll each turn."),
+    'qty' => 4
   ],
   'plus_minus_footslip' => [
     'id' => 6,
-    'type' => 'plus_minus_footslip',
-    'name' => clienttranslate("Footslip"),
-    'tooltip' => clienttranslate("Subtract two dice from your next chopping roll.")
-  ],
-  'equipment_double_bladed_axe' => [
-    'id' => 7,
-    'type' => 'equipment',
-    'name' => clienttranslate("Double Bladed Axe"),
-    'tooltip' => clienttranslate("Lets you make a chopping roll with one additional die.")
-  ],
-  'plus_minus_side_of_bacon' => [
-    'id' => 8,
     'type' => 'plus_minus',
-    'name' => clienttranslate("Side of Bacon"),
-    'tooltip' => clienttranslate("Add one die to your next chopping roll (can be played with Flapjacks or Shortstack).")
+    'name' => clienttranslate("Footslip"),
+    'tooltip' => clienttranslate("Subtract two dice from your next chopping roll."),
+    'modifier' => -2,
+    'persistent' => false,
+    'preventable_by' => 'boots',
+    'qty' => 5
   ],
   'action_paul_bunyan' => [
     'id' => 9,
     'type' => 'action',
     'name' => clienttranslate("Paul Bunyan"),
-    'tooltip' => clienttranslate("All trees in play are chopped down.")
+    'tooltip' => clienttranslate("All trees in play are chopped down."),
+    'qty' => 1
   ],
   'action_steal_equipment' => [
     'id' => 10,
     'type' => 'action',
     'name' => clienttranslate("Steal Equipment"),
-    'tooltip' => clienttranslate("Take one equipment card in play from any player.")
+    'tooltip' => clienttranslate("Take one equipment card in play from any player."),
+    'qty' => 3
   ],
   'sasquatch_that_darn_sasquatch' => [
     'id' => 11,
     'type' => 'sasquatch',
     'name' => clienttranslate("That Darn Sasquatch"),
-    'tooltip' => clienttranslate("All equipment in play is discarded.")
-  ],
-  'contest_log_rolling' => [
-    'id' => 12,
-    'type' => 'contest',
-    'name' => clienttranslate("Log Rolling"),
-    'tooltip' => clienttranslate("Choose an opponent:</br>Both players roll one die. The lower roller loses next turn.")
+    'tooltip' => clienttranslate("All equipment in play is discarded."),
+    'qty' => 2
   ],
   'action_axe_break' => [
     'id' => 13,
-    'type' => 'axe_break',
+    'type' => 'action',
     'name' => clienttranslate("Axe Break"),
-    'tooltip' => clienttranslate("Player's axe in play must be discarded")
+    'tooltip' => clienttranslate("Player's axe in play must be discarded."),
+    'qty' => 4
   ],
   'equipment_gloves' => [
     'id' => 14,
     'type' => 'equipment',
+    'subtype' => 'protection',
     'name' => clienttranslate("Gloves"),
-    'tooltip' => clienttranslate("Prevents Blisters and Axe Slip")
-  ],
-  'action_babe_biscuit' => [
-    'id' => 15,
-    'type' => 'action',
-    'name' => clienttranslate("Babe Biscuit"),
-    'tooltip' => clienttranslate("Lure Babe from an opponent or the discard pile.")
-  ],
-  'help_babe' => [
-    'id' => 16,
-    'type' => 'help',
-    'name' => clienttranslate("Babe"),
-    'tooltip' => clienttranslate("Roll two separate dice in addition to your chopping roll each turn.")
+    'tooltip' => clienttranslate("Prevents Blisters and Axe Slip."),
+    'qty' => 5
   ],
   'equipment_carpenters_axe' => [
     'id' => 17,
     'type' => 'equipment',
+    'subtype' => 'axe',
     'name' => clienttranslate("Carpenter's Axe"),
-    'tooltip' => clienttranslate("Lets you make a chopping roll.")
+    'tooltip' => clienttranslate("Lets you make a chopping roll."),
+    'qty' => 5
   ],
   'equipment_dull_axe' => [
     'id' => 18,
     'type' => 'equipment',
+    'subtype' => 'axe',
     'name' => clienttranslate("Dull Axe"),
-    'tooltip' => clienttranslate("Subtract one die from your chopping roll.</br>Dull Axe can be given to any player.")
+    'tooltip' => clienttranslate("Subtract one die from your chopping roll. Dull Axe can be given to any player."),
+    'modifier' => -1,
+    'qty' => 5
   ],
   'equipment_swedish_broad_axe' => [
     'id' => 19,
     'type' => 'equipment',
+    'subtype' => 'axe',
     'name' => clienttranslate("Swedish Broad Axe"),
-    'tooltip' => clienttranslate("Lets you make a chopping roll.")
+    'tooltip' => clienttranslate("Lets you make a chopping roll."),
+    'qty' => 5
   ],
-  'equpment_titanium_axe' => [
+  'equipment_titanium_axe' => [
     'id' => 20,
     'type' => 'equipment',
+    'subtype' => 'axe',
     'name' => clienttranslate("Titanium Axe"),
-    'tooltip' => clienttranslate("Add one die to your chopping roll.</br>Titanium Axe cannot be broken.")
+    'tooltip' => clienttranslate("Add one die to your chopping roll. Titanium Axe cannot be broken."),
+    'modifier' => 1,
+    'unbreakable' => true,
+    'qty' => 3
   ],
   'plus_minus_blisters' => [
     'id' => 21,
     'type' => 'plus_minus',
     'name' => clienttranslate("Blisters"),
-    'tooltip' => clienttranslate("Subtract one die from your chopping roll each turn.")
+    'tooltip' => clienttranslate("Subtract one die from your chopping roll each turn."),
+    'modifier' => -1,
+    'persistent' => true,
+    'removable_by' => 'gloves',
+    'qty' => 4
   ],
   'action_lure_help' => [
     'id' => 22,
     'type' => 'action',
     'name' => clienttranslate("Lure Help"),
-    'tooltip' => clienttranslate("Steal Apprentice or Long Saw and Partner.")
-  ],
-  'action_give_me_a_hand' => [
-    'id' => 23,
-    'type' => 'action',
-    'name' => clienttranslate("Give Me a hand"),
-    'tooltip' => clienttranslate("Choose an opponent:</br>On that player's next chopping roll one die must be used to chop your tree.")
-  ],
-  'contest_speed_climb' => [
-    'id' => 24,
-    'type' => 'contest',
-    'name' => clienttranslate("Speed Climb"),
-    'tooltip' => clienttranslate("Choose an opponent:</br>Both players roll one die. The higher roll wins 2 victory points.")
+    'tooltip' => clienttranslate("Steal Apprentice or Long Saw and Partner."),
+    'qty' => 5
   ],
   'sasquatch_sasquatch_mating_season' => [
     'id' => 25,
     'type' => 'sasquatch',
     'name' => clienttranslate("Sasquatch Mating Season"),
-    'tooltip' => clienttranslate("Player loses a turn. You may take over this player's tree and discard your own.")
+    'tooltip' => clienttranslate("Player loses a turn. You may take over this player's tree and discard your own."),
+    'qty' => 2
   ],
   'plus_minus_axe_slip' => [
     'id' => 26,
     'type' => 'plus_minus',
     'name' => clienttranslate("Axe Slip"),
-    'tooltip' => clienttranslate("Subtract one die from your next chopping roll.")
+    'tooltip' => clienttranslate("Subtract one die from your next chopping roll."),
+    'modifier' => -1,
+    'persistent' => false,
+    'preventable_by' => 'gloves',
+    'qty' => 5
   ],
   'equipment_boots' => [
     'id' => 27,
     'type' => 'equipment',
+    'subtype' => 'protection',
     'name' => clienttranslate("Boots"),
-    'tooltip' => clienttranslate("Prevents foot slip")
+    'tooltip' => clienttranslate("Prevents foot slip."),
+    'qty' => 5
   ],
   'action_steal_axe' => [
     'id' => 28,
     'type' => 'action',
     'name' => clienttranslate("Steal Axe"),
-    'tooltip' => clienttranslate("Take one axe card in play from any player.")
+    'tooltip' => clienttranslate("Take one axe card in play from any player."),
+    'qty' => 3
   ],
   'action_switch_tags' => [
     'id' => 29,
     'type' => 'action',
     'name' => clienttranslate("Switch Tags"),
-    'tooltip' => clienttranslate("Exchange a chopped down tree with any player.")
+    'tooltip' => clienttranslate("Exchange a chopped down tree with any player."),
+    'qty' => 3
   ],
   'action_tree_hugger' => [
     'id' => 30,
     'type' => 'action',
     'name' => clienttranslate("Tree Hugger"),
-    'tooltip' => clienttranslate("Player loses a turn.")
-  ],
-  'contest_axe_throw' => [
-    'id' => 31,
-    'type' => 'contest',
-    'name' => clienttranslate("Axe Throw"),
-    'tooltip' => clienttranslate("Choose an opponent:</br>Both players roll one die. The higher roll gets +2 dice on next chopping roll.")
-  ],
-  'contest_equipment_chainsaw_carving' => [
-    'id' => 32,
-    'type' => 'contest_equipment',
-    'name' => clienttranslate("Chainsaw Carving"),
-    'tooltip' => clienttranslate("Choose an opponent:</br>Both players roll one die. The higher roll wins this chainsaw.")
+    'tooltip' => clienttranslate("Player loses a turn."),
+    'qty' => 4
   ],
   'reaction_debunk' => [
     'id' => 33,
     'type' => 'reaction',
     'name' => clienttranslate("Debunk"),
-    'tooltip' => clienttranslate("Stops any Sasquatch card immediately.")
+    'tooltip' => clienttranslate("Stops any Sasquatch card immediately."),
+    'blocks' => 'sasquatch',
+    'qty' => 3
   ],
   'plus_minus_flapjacks' => [
     'id' => 34,
     'type' => 'plus_minus',
     'name' => clienttranslate("Flapjacks"),
-    'tooltip' => clienttranslate("Add two dice to your chopping roll this turn.")
+    'tooltip' => clienttranslate("Add two dice to your chopping roll this turn."),
+    'modifier' => 2,
+    'persistent' => false,
+    'qty' => 3
   ],
   'action_forest_fire' => [
     'id' => 35,
     'type' => 'action',
     'name' => clienttranslate("Forest Fire"),
-    'tooltip' => clienttranslate("All trees in play are destroyed.")
+    'tooltip' => clienttranslate("All trees in play are destroyed."),
+    'qty' => 1
   ],
   'help_long_saw_and_partner' => [
     'id' => 36,
     'type' => 'help',
     'name' => clienttranslate("Long Saw and Partner"),
-    'tooltip' => clienttranslate("Set your axe aside and roll 5 dice.</br>If on any turn you roll 4 misses or breaks, move this card to the player on your right.")
+    'tooltip' => clienttranslate("Set your axe aside and roll 5 dice. If on any turn you roll 4 misses or breaks, move this card to the player on your right."),
+    'qty' => 1
   ],
   'reaction_paperwork' => [
     'id' => 37,
     'type' => 'reaction',
     'name' => clienttranslate("Paperwork"),
-    'tooltip' => clienttranslate("Prevents Switch Tags and Tree Hugger immediately.")
+    'tooltip' => clienttranslate("Prevents Switch Tags and Tree Hugger immediately."),
+    'blocks' => ['switch_tags', 'tree_hugger'],
+    'qty' => 5
   ],
   'sasquatch_sasquatch_sighting' => [
     'id' => 38,
     'type' => 'sasquatch',
     'name' => clienttranslate("Sasquatch Sighting"),
-    'tooltip' => clienttranslate("All opponents roll one die. Players that roll 1, 2, or 3 lose their next turn.")
+    'tooltip' => clienttranslate("All opponents roll one die. Players that roll 1, 2, or 3 lose their next turn."),
+    'qty' => 2
   ],
   'plus_minus_shortstack' => [
     'id' => 39,
     'type' => 'plus_minus',
     'name' => clienttranslate("Shortstack"),
-    'tooltip' => clienttranslate("Add one die to your chopping roll this turn.")
+    'tooltip' => clienttranslate("Add one die to your chopping roll this turn."),
+    'modifier' => 1,
+    'persistent' => false,
+    'qty' => 4
   ],
-  'reaction_northern_justice' => [
-    'id' => 40,
-    'type' => 'reaction',
-    'name' => clienttranslate("Northern Justice"),
-    'tooltip' => clienttranslate("Prevents Steal Axe and Steal Equipment immediately.</br>The player caught stealing loses chopping roll this turn.")
-  ]
- ];
+];
 
+// Tree cards (Tree Deck) - card definitions with quantities
 $this->tree_cards = [
   'norway_pine' => [
     'id' => 1,
     'name' => clienttranslate("Norway Pine"),
     'chops_required' => 4,
-    'points' => 4
+    'points' => 4,
+    'qty' => 8
   ],
   'american_elm' => [
     'id' => 2,
     'name' => clienttranslate("American Elm"),
     'chops_required' => 8,
-    'points' => 8
+    'points' => 8,
+    'qty' => 2
   ],
   'cottonwood' => [
     'id' => 3,
     'name' => clienttranslate("Cottonwood"),
     'chops_required' => 5,
-    'points' => 6
+    'points' => 6,
+    'qty' => 6
   ],
   'mighty_oak' => [
     'id' => 4,
     'name' => clienttranslate("Mighty Oak"),
     'chops_required' => 9,
-    'points' => 12
+    'points' => 12,
+    'qty' => 1
   ],
   'red_oak' => [
     'id' => 5,
     'name' => clienttranslate("Red Oak"),
     'chops_required' => 6,
-    'points' => 7
+    'points' => 7,
+    'qty' => 5
   ],
   'river_birch' => [
     'id' => 6,
     'name' => clienttranslate("River Birch"),
     'chops_required' => 4,
-    'points' => 5
+    'points' => 5,
+    'qty' => 8
   ],
   'silver_maple' => [
     'id' => 7,
     'name' => clienttranslate("Silver Maple"),
     'chops_required' => 7,
-    'points' => 8
+    'points' => 8,
+    'qty' => 3
   ]
 ];
 
@@ -332,4 +317,17 @@ $this->game_constants = [
   'base_axe_dice' => 3,  // Standard axe rolls 3 dice
   'long_saw_dice' => 5,  // Long Saw & Partner rolls 5 dice
   'long_saw_break_threshold' => 4  // Long Saw breaks on 4+ misses/breaks combined
+];
+
+// Card deck locations
+$this->card_locations = [
+  'jack_deck' => 'deck',
+  'tree_deck' => 'treedeck',
+  'discard' => 'discard',
+  'hand' => 'hand',
+  'equipment' => 'equipment',
+  'help' => 'help',
+  'modifier' => 'modifier',
+  'tree_active' => 'treeactive',
+  'tree_cut' => 'treecut'
 ];
