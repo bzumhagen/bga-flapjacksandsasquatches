@@ -276,6 +276,27 @@ class FlapjacksAndSasquatches extends Table
         return $card;
     }
 
+    /**
+     * Get valid targets for a card effect
+     */
+    function getValidTargets( $card_info )
+    {
+        $players = self::loadPlayersBasicInfos();
+        $active_player_id = self::getActivePlayerId();
+        $valid_targets = array();
+
+        // Most cards can target other players
+        foreach( $players as $player_id => $player )
+        {
+            if( $player_id != $active_player_id )
+            {
+                $valid_targets[] = $player_id;
+            }
+        }
+
+        return $valid_targets;
+    }
+
 
 
 //////////////////////////////////////////////////////////////////////////////
@@ -324,22 +345,47 @@ class FlapjacksAndSasquatches extends Table
         game state.
     */
 
-    /*
-
-    Example for game state "MyGameState":
-
-    function argMyGameState()
+    function argPlayerTurn()
     {
-        // Get some values from the current game situation in database...
+        $player_id = self::getActivePlayerId();
 
-        // return values:
+        // Get player's hand
+        $hand = $this->cards->getCardsInLocation( 'hand', $player_id );
+
         return array(
-            'variable1' => $value1,
-            'variable2' => $value2,
-            ...
+            'canPlay' => count($hand) > 0
         );
     }
-    */
+
+    function argReactionWindow()
+    {
+        $pending_card_id = self::getGameStateValue( 'reaction_pending_card' );
+        $target_player_id = self::getGameStateValue( 'reaction_pending_player' );
+        $card_info = $this->getCardInfo( $pending_card_id );
+
+        return array(
+            'card_name' => $card_info['name'],
+            'card_id' => $pending_card_id,
+            'card_type' => $card_info['type'],
+            'target_name' => $target_player_id ? self::getPlayerNameById( $target_player_id ) : '',
+            'target_id' => $target_player_id
+        );
+    }
+
+    function argSelectTarget()
+    {
+        $player_id = self::getActivePlayerId();
+        $pending_card_id = self::getGameStateValue( 'reaction_pending_card' );
+        $card_info = $this->getCardInfo( $pending_card_id );
+
+        // Get valid targets based on card type
+        $valid_targets = $this->getValidTargets( $card_info );
+
+        return array(
+            'card_name' => $card_info['name'],
+            'valid_targets' => $valid_targets
+        );
+    }
 
 //////////////////////////////////////////////////////////////////////////////
 //////////// Game state actions
@@ -350,18 +396,395 @@ class FlapjacksAndSasquatches extends Table
         The action method of state X is called everytime the current game state is set to X.
     */
 
-    /*
-
-    Example for game state "MyGameState":
-
-    function stMyGameState()
+    /**
+     * State: playerTurnStart
+     * Check if player needs a tree card
+     */
+    function stPlayerTurnStart()
     {
-        // Do some stuff ...
+        $player_id = self::getActivePlayerId();
 
-        // (very often) go to another gamestate
-        $this->gamestate->nextState( 'some_gamestate_transition' );
+        // Check if player has an active tree
+        $sql = "SELECT tree_id FROM active_tree WHERE player_id = $player_id";
+        $has_tree = self::getUniqueValueFromDB( $sql );
+
+        if( !$has_tree )
+        {
+            $this->gamestate->nextState( 'drawTree' );
+        }
+        else
+        {
+            $this->gamestate->nextState( 'drawCard' );
+        }
     }
-    */
+
+    /**
+     * State: drawTreeCard
+     * Player draws a tree card automatically
+     */
+    function stDrawTreeCard()
+    {
+        $player_id = self::getActivePlayerId();
+
+        // Draw a tree card
+        $tree_card = $this->cards->pickCard( 'treedeck', $player_id );
+
+        if( $tree_card )
+        {
+            // Get tree info
+            $tree_info = $this->tree_cards[$tree_card['type']];
+
+            // Create active tree entry
+            $sql = "INSERT INTO active_tree (player_id, card_id, tree_type, chop_count, chops_required, points_value)
+                    VALUES ($player_id, {$tree_card['id']}, '{$tree_card['type']}', 0, {$tree_info['chops_required']}, {$tree_info['points']})";
+            self::DbQuery( $sql );
+
+            // Update player's current tree reference
+            $tree_id = self::getUniqueValueFromDB( "SELECT LAST_INSERT_ID()" );
+            $sql = "UPDATE player SET player_current_tree_id = $tree_id WHERE player_id = $player_id";
+            self::DbQuery( $sql );
+
+            // Notify all players
+            $this->notify->all( 'treeDrawn', clienttranslate( '${player_name} draws ${tree_name}' ), array(
+                'player_id' => $player_id,
+                'player_name' => self::getActivePlayerName(),
+                'tree_name' => $tree_info['name'],
+                'tree_id' => $tree_id,
+                'card_id' => $tree_card['id'],
+                'tree_type' => $tree_card['type'],
+                'chops_required' => $tree_info['chops_required'],
+                'points' => $tree_info['points']
+            ));
+        }
+
+        $this->gamestate->nextState( 'next' );
+    }
+
+    /**
+     * State: drawJackCard
+     * Player draws a card from Jack Deck
+     */
+    function stDrawJackCard()
+    {
+        $player_id = self::getActivePlayerId();
+
+        // Draw a card
+        $card = $this->cards->pickCard( 'deck', $player_id );
+
+        if( $card )
+        {
+            $card_info = $this->getCardInfo( $card['id'] );
+
+            // Notify player privately
+            $this->notify->player( $player_id, 'cardDrawn', '', array(
+                'card' => $card_info
+            ));
+
+            // Notify all players publicly (no card details)
+            $this->notify->all( 'cardDrawnPublic', clienttranslate( '${player_name} draws a card' ), array(
+                'player_id' => $player_id,
+                'player_name' => self::getActivePlayerName()
+            ));
+        }
+
+        $this->gamestate->nextState( 'next' );
+    }
+
+    /**
+     * State: checkReaction
+     * Check if any players can react to the played card
+     */
+    function stCheckReaction()
+    {
+        $pending_card_id = self::getGameStateValue( 'reaction_pending_card' );
+        $card_info = $this->getCardInfo( $pending_card_id );
+
+        // Determine if this card can be reacted to
+        $can_react = false;
+        $active_players = array();
+
+        // Check card type for reaction possibilities
+        if( $card_info['type'] == 'sasquatch' )
+        {
+            // Debunk can block sasquatch cards
+            $can_react = true;
+            $reaction_card = 'reaction_debunk';
+        }
+        else if( in_array($card_info['id'], [29, 30]) ) // Switch Tags, Tree Hugger
+        {
+            // Paperwork can block these
+            $can_react = true;
+            $reaction_card = 'reaction_paperwork';
+        }
+        else if( in_array($card_info['id'], [10, 28]) ) // Steal Equipment, Steal Axe
+        {
+            // Northern Justice can block (but not in base game)
+            $can_react = false; // Northern Justice qty = 0 in base game
+        }
+
+        if( $can_react )
+        {
+            // Find players who have the reaction card
+            $players = self::loadPlayersBasicInfos();
+            foreach( $players as $player_id => $player )
+            {
+                $hand = $this->cards->getCardsInLocation( 'hand', $player_id );
+                foreach( $hand as $card )
+                {
+                    if( $card['type'] == $reaction_card )
+                    {
+                        $active_players[] = $player_id;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if( count($active_players) > 0 )
+        {
+            // Set players as multiactive for reaction
+            $this->gamestate->setPlayersMultiactive( $active_players, 'next', true );
+            $this->gamestate->nextState( 'reaction' );
+        }
+        else
+        {
+            $this->gamestate->nextState( 'noReaction' );
+        }
+    }
+
+    /**
+     * State: resolveReaction
+     * Process any reactions that were played
+     */
+    function stResolveReaction()
+    {
+        // Check if any reaction was played (stored in globals)
+        $reaction_played = $this->globals->get( 'reaction_played', false );
+
+        if( $reaction_played )
+        {
+            // Card was blocked, discard both cards
+            $this->gamestate->nextState( 'blocked' );
+        }
+        else
+        {
+            // No reaction, proceed with card effect
+            $this->gamestate->nextState( 'proceed' );
+        }
+
+        // Clear reaction tracking
+        $this->globals->set( 'reaction_played', false );
+    }
+
+    /**
+     * State: resolveCard
+     * Execute the effect of the played card
+     */
+    function stResolveCard()
+    {
+        $pending_card_id = self::getGameStateValue( 'reaction_pending_card' );
+        $card_info = $this->getCardInfo( $pending_card_id );
+
+        // Route to appropriate handler based on card type
+        // For now, just proceed to chopping roll
+        // TODO: Implement specific card effects in Phase 3
+
+        $this->gamestate->nextState( 'next' );
+    }
+
+    /**
+     * State: sasquatchSighting
+     * All opponents roll to avoid losing their turn
+     */
+    function stSasquatchSighting()
+    {
+        $active_player_id = self::getActivePlayerId();
+        $players = self::loadPlayersBasicInfos();
+
+        // Set all opponents as multiactive
+        $opponents = array();
+        foreach( $players as $player_id => $player )
+        {
+            if( $player_id != $active_player_id )
+            {
+                $opponents[] = $player_id;
+            }
+        }
+
+        $this->gamestate->setPlayersMultiactive( $opponents, 'next', false );
+    }
+
+    /**
+     * State: contestRoll
+     * Both players roll dice for contest
+     */
+    function stContestRoll()
+    {
+        // TODO: Implement contest logic in Phase 3
+        // Not needed for base game (no contest cards)
+        $this->gamestate->nextState( 'next' );
+    }
+
+    /**
+     * State: choppingRoll
+     * Player performs chopping roll if they have an axe
+     */
+    function stChoppingRoll()
+    {
+        $player_id = self::getActivePlayerId();
+
+        // Check if player has equipment (axe or Long Saw & Partner)
+        $sql = "SELECT equipment_type FROM player_equipment WHERE player_id = $player_id";
+        $equipment = self::getObjectListFromDB( $sql );
+
+        $has_chopping_tool = false;
+        foreach( $equipment as $equip )
+        {
+            if( strpos($equip['equipment_type'], 'axe') !== false ||
+                $equip['equipment_type'] == 'help_long_saw_and_partner' )
+            {
+                $has_chopping_tool = true;
+                break;
+            }
+        }
+
+        if( $has_chopping_tool )
+        {
+            // TODO: Implement dice rolling in Phase 4
+            // For now, just skip
+        }
+
+        $this->gamestate->nextState( 'next' );
+    }
+
+    /**
+     * State: checkTreeComplete
+     * Check if player's tree is complete
+     */
+    function stCheckTreeComplete()
+    {
+        $player_id = self::getActivePlayerId();
+
+        // Get active tree
+        $sql = "SELECT tree_id, chop_count, chops_required
+                FROM active_tree WHERE player_id = $player_id";
+        $tree = self::getObjectFromDB( $sql );
+
+        if( $tree && $tree['chop_count'] >= $tree['chops_required'] )
+        {
+            $this->gamestate->nextState( 'treeComplete' );
+        }
+        else
+        {
+            $this->gamestate->nextState( 'continue' );
+        }
+    }
+
+    /**
+     * State: treeCompleted
+     * Move completed tree to cut pile and check for win
+     */
+    function stTreeCompleted()
+    {
+        $player_id = self::getActivePlayerId();
+
+        // Get the completed tree
+        $sql = "SELECT * FROM active_tree WHERE player_id = $player_id";
+        $tree = self::getObjectFromDB( $sql );
+
+        if( $tree )
+        {
+            // Get next cut order number
+            $sql = "SELECT MAX(cut_order) as max_order FROM cut_tree WHERE player_id = $player_id";
+            $max_order = self::getUniqueValueFromDB( $sql );
+            $cut_order = ($max_order ? $max_order : 0) + 1;
+
+            // Move to cut pile
+            $sql = "INSERT INTO cut_tree (player_id, card_id, tree_type, points_value, cut_order)
+                    VALUES ($player_id, {$tree['card_id']}, '{$tree['tree_type']}', {$tree['points_value']}, $cut_order)";
+            self::DbQuery( $sql );
+
+            // Remove from active trees
+            $sql = "DELETE FROM active_tree WHERE tree_id = {$tree['tree_id']}";
+            self::DbQuery( $sql );
+
+            // Update player score
+            $sql = "UPDATE player SET player_score = player_score + {$tree['points_value']},
+                                      player_current_tree_id = NULL
+                    WHERE player_id = $player_id";
+            self::DbQuery( $sql );
+
+            // Update stats
+            $this->playerStats->inc( 'trees_chopped', $player_id );
+            $this->tableStats->inc( 'total_trees_chopped' );
+
+            // Notify
+            $tree_info = $this->tree_cards[$tree['tree_type']];
+            $this->notify->all( 'treeCompleted', clienttranslate( '${player_name} completes ${tree_name} for ${points} points!' ), array(
+                'player_id' => $player_id,
+                'player_name' => self::getPlayerNameById( $player_id ),
+                'tree_name' => $tree_info['name'],
+                'points' => $tree['points_value'],
+                'tree_id' => $tree['tree_id'],
+                'new_score' => self::getUniqueValueFromDB( "SELECT player_score FROM player WHERE player_id = $player_id" )
+            ));
+
+            // Check for win condition
+            $score = self::getUniqueValueFromDB( "SELECT player_score FROM player WHERE player_id = $player_id" );
+            if( $score >= $this->game_constants['winning_score'] )
+            {
+                $this->gamestate->nextState( 'gameEnd' );
+                return;
+            }
+        }
+
+        $this->gamestate->nextState( 'continue' );
+    }
+
+    /**
+     * State: nextPlayer
+     * Advance to next player, handling skip turns
+     */
+    function stNextPlayer()
+    {
+        $current_player_id = self::getActivePlayerId();
+
+        // Check if current player should skip next turn
+        $sql = "SELECT player_skip_next_turn FROM player WHERE player_id = $current_player_id";
+        $skip = self::getUniqueValueFromDB( $sql );
+
+        if( $skip )
+        {
+            // Clear skip flag
+            $sql = "UPDATE player SET player_skip_next_turn = 0 WHERE player_id = $current_player_id";
+            self::DbQuery( $sql );
+        }
+
+        // Move to next player
+        $next_player_id = self::activeNextPlayer();
+
+        // Check if next player should skip
+        $sql = "SELECT player_skip_next_turn FROM player WHERE player_id = $next_player_id";
+        $next_skip = self::getUniqueValueFromDB( $sql );
+
+        if( $next_skip )
+        {
+            // Skip this player
+            $sql = "UPDATE player SET player_skip_next_turn = 0 WHERE player_id = $next_player_id";
+            self::DbQuery( $sql );
+
+            $this->notify->all( 'playerSkipped', clienttranslate( '${player_name} skips their turn' ), array(
+                'player_id' => $next_player_id,
+                'player_name' => self::getPlayerNameById( $next_player_id )
+            ));
+
+            $this->gamestate->nextState( 'skipTurn' );
+        }
+        else
+        {
+            $this->gamestate->nextState( 'nextTurn' );
+        }
+    }
 
 //////////////////////////////////////////////////////////////////////////////
 //////////// Zombie
