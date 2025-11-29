@@ -2,7 +2,7 @@
  /**
   *------
   * BGA framework: © Gregory Isabelli <gisabelli@boardgamearena.com> & Emmanuel Colin <ecolin@boardgamearena.com>
-  * FlapjacksAndSasquatches implementation : © <Your name here> <Your email address here>
+  * FlapjacksAndSasquatches implementation : © Benjamin Zumhagen bzumhagen@gmail.com
   *
   * This code has been produced on the BGA studio platform for use on http://boardgamearena.com.
   * See http://en.boardgamearena.com/#!doc/Studio for more information.
@@ -41,12 +41,6 @@ class FlapjacksAndSasquatches extends Table
         // Create deck manager
         $this->cards = $this->deckFactory->createDeck('card');
 	}
-
-    protected function getGameName( )
-    {
-		// Used for translations and stuff. Please do not modify.
-        return "flapjacksandsasquatches";
-    }
 
     /*
         setupNewGame:
@@ -110,6 +104,9 @@ class FlapjacksAndSasquatches extends Table
         $this->activeNextPlayer();
 
         /************ End of the game initialization *****/
+
+        // Return initial state (state 10: playerTurnStart)
+        return 10;
     }
 
     /*
@@ -305,10 +302,11 @@ class FlapjacksAndSasquatches extends Table
 
     /*
         Each time a player is doing some game action, one of the methods below is called.
-        (note: each method below must match an input method in flapjacksandsasquatches.action.php)
+        These methods use auto-wired actions (no need for .action.php file)
     */
 
-    function playCard( $card_id )
+    #[ActionParam('card_id', AT_posint, true)]
+    function playCard( int $card_id )
     {
         self::checkAction( 'playCard' );
         $player_id = self::getActivePlayerId();
@@ -344,7 +342,8 @@ class FlapjacksAndSasquatches extends Table
         }
     }
 
-    function discardCard( $card_id )
+    #[ActionParam('card_id', AT_posint, true)]
+    function discardCard( int $card_id )
     {
         self::checkAction( 'discardCard' );
         $player_id = self::getActivePlayerId();
@@ -371,7 +370,8 @@ class FlapjacksAndSasquatches extends Table
         $this->gamestate->nextState( 'drawCard' );
     }
 
-    function selectTarget( $target_id )
+    #[ActionParam('target_id', AT_posint, true)]
+    function selectTarget( int $target_id )
     {
         self::checkAction( 'selectTarget' );
         $player_id = self::getActivePlayerId();
@@ -400,7 +400,8 @@ class FlapjacksAndSasquatches extends Table
         $this->gamestate->nextState( 'next' );
     }
 
-    function playReaction( $card_id )
+    #[ActionParam('card_id', AT_posint, true)]
+    function playReaction( int $card_id )
     {
         self::checkAction( 'playReaction' );
         $player_id = self::getCurrentPlayerId();

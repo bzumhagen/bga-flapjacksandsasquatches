@@ -2,7 +2,7 @@
 /**
  *------
  * BGA framework: © Gregory Isabelli <gisabelli@boardgamearena.com> & Emmanuel Colin <ecolin@boardgamearena.com>
- * FlapjacksAndSasquatches implementation : © <Your name here> <Your email address here>
+ * FlapjacksAndSasquatches implementation : © Benjamin Zumhagen bzumhagen@gmail.com
  *
  * This code has been produced on the BGA studio platform for use on http://boardgamearena.com.
  * See http://en.boardgamearena.com/#!doc/Studio for more information.
@@ -30,15 +30,6 @@
 */
 
 $machinestates = array(
-
-    // The initial state. Please do not modify.
-    1 => array(
-        "name" => "gameSetup",
-        "description" => "",
-        "type" => "manager",
-        "action" => "stGameSetup",
-        "transitions" => array( "" => 10 )
-    ),
 
     // Start of player turn - check if player needs a tree
     10 => array(
@@ -211,15 +202,6 @@ $machinestates = array(
             "nextTurn" => 10,
             "skipTurn" => 70
         )
-    ),
-
-    // Final state.
-    99 => array(
-        "name" => "gameEnd",
-        "description" => clienttranslate("End of game"),
-        "type" => "manager",
-        "action" => "stGameEnd",
-        "args" => "argGameEnd"
     )
 
 );

@@ -37,28 +37,168 @@ A comprehensive reference for key features, restrictions, and best practices whe
 
 ## 📁 File Structure
 
-### Required Files
+### Required Files (Modern BGA)
 
-| File | Purpose |
-|------|---------|
-| `dbmodel.sql` | Database schema definition |
-| `gameinfos.inc.php` | Game metadata (name, players, duration, etc.) |
-| `material.inc.php` | Static game data (card types, constants) |
-| `Game.php` | Main server-side game logic |
-| `[gamename].game.php` | (Alternative naming for Game.php) |
-| `[gamename].js` | Client-side interface logic |
-| `[gamename].action.php` | Player action handlers (AJAX endpoints) |
-| `[gamename].view.php` | Dynamic HTML generation |
-| `[gamename].tpl` | Static HTML templates |
-| `[gamename].css` | Game styling |
-| `states.inc.php` | Game state machine definition |
-| `stats.inc.php` | Statistics tracking configuration |
-| `gameoptions.json` | Game options/variants |
+| File | Purpose | Notes |
+|------|---------|-------|
+| `dbmodel.sql` | Database schema definition | |
+| `gameinfos.inc.php` | Game metadata (name, players, basic config) | Minimal - most metadata now in Game Metadata Manager |
+| `material.inc.php` | Static game data (card types, constants) | |
+| `[gamename].game.php` | Main server-side game logic | Use auto-wired actions |
+| `[gamename].js` | Client-side interface logic | Use `bgaPerformAction()` |
+| `[gamename].view.php` | Dynamic HTML generation | |
+| `[gamename]_[gamename].tpl` | Static HTML templates | |
+| `[gamename].css` | Game styling | |
+| `states.inc.php` | Game state machine definition | No state 1 or 99 needed |
+| `stats.json` | Statistics tracking configuration | Replaces stats.inc.php |
+| `gameoptions.json` | Game options/variants | Replaces gameoptions.inc.php |
+| `gamepreferences.json` | Player preferences | Optional |
+| `modules/php/Game.php` | Module placeholder | Required but can be empty |
+
+### Deprecated Files (Do Not Use)
+- ❌ `[gamename].action.php` - Use auto-wired actions instead
+- ❌ `stats.inc.php` - Use stats.json
+- ❌ `gameoptions.inc.php` - Use gameoptions.json
+- ❌ `version.php` - Obsolete
+- ❌ `img/game_box.jpg` - Use Game Metadata Manager
+- ❌ `img/game_box.png` - Use Game Metadata Manager
 
 ### Optional Directories
 - `States/` - State machine class implementations
 - `img/` - Visual assets (sprites, backgrounds)
 - `modules/` - Reusable code modules
+
+---
+
+## 📝 Game Configuration Files
+
+### gameinfos.inc.php ⭐ Modern Minimal Format
+
+Modern BGA has moved most game metadata to the **Game Metadata Manager** web interface. The gameinfos.inc.php file should now contain only essential configuration.
+
+#### Deprecated Keys (Managed in Game Metadata Manager)
+Remove these keys - they're now set via the web interface:
+- ❌ `designer` - Set in Game Metadata Manager
+- ❌ `artist` - Set in Game Metadata Manager  
+- ❌ `year` - Set in Game Metadata Manager
+- ❌ `presentation` - Set in Game Metadata Manager
+- ❌ `complexity` - Set in Game Metadata Manager
+- ❌ `luck` - Set in Game Metadata Manager
+- ❌ `strategy` - Set in Game Metadata Manager
+- ❌ `diplomacy` - Set in Game Metadata Manager
+- ❌ `is_beta` - Set in Game Metadata Manager
+- ❌ `tags` - Set in Game Metadata Manager
+- ❌ `is_sandbox` - Obsolete
+- ❌ `turnControl` - Obsolete
+
+#### Modern gameinfos.inc.php Example
+```php
+<?php
+$gameinfos = array(
+    'game_name' => "My Amazing Game",
+    'publisher' => 'My Publisher',
+    'publisher_website' => 'https://publisher.com/',
+    'publisher_bgg_id' => 1234,
+    'bgg_id' => 5678,
+    
+    'players' => array(2, 3, 4),
+    'suggest_player_number' => 4,
+    'not_recommend_player_number' => null,
+    
+    'estimated_duration' => 30,
+    'fast_additional_time' => 30,
+    'medium_additional_time' => 40,
+    'slow_additional_time' => 50,
+    
+    'tie_breaker_description' => "",
+    'losers_not_ranked' => false,
+    'solo_mode_ranked' => false,
+    'is_coop' => 0,
+    'language_dependency' => false,
+    
+    'player_colors' => array("ff0000", "008000", "0000ff", "ffa500"),
+    'favorite_colors_support' => true,
+    'game_interface_width' => array('min' => 740, 'max' => null)
+);
+```
+
+### stats.json (Replaces stats.inc.php)
+
+```json
+{
+  "table": {
+    "rounds_played": {
+      "id": 10,
+      "name": "Number of rounds",
+      "type": "int"
+    }
+  },
+  "player": {
+    "cards_played": {
+      "id": 10,
+      "name": "Cards played",
+      "type": "int"
+    },
+    "points_scored": {
+      "id": 11,
+      "name": "Points scored",
+      "type": "int"
+    }
+  }
+}
+```
+
+**After creating stats.json:**
+1. Click "Reload statistics configuration" in BGA Studio
+2. Delete the old `stats.inc.php` file
+
+### gameoptions.json (Replaces gameoptions.inc.php)
+
+```json
+[
+  {
+    "name": "Game Length",
+    "values": {
+      "1": {
+        "name": "Short",
+        "description": "Play to 50 points"
+      },
+      "2": {
+        "name": "Normal",
+        "description": "Play to 100 points",
+        "tmdisplay": "Normal length"
+      },
+      "3": {
+        "name": "Long",
+        "description": "Play to 150 points"
+      }
+    },
+    "default": 2
+  }
+]
+```
+
+**After creating gameoptions.json:**
+1. Click "Reload game options configuration" in BGA Studio
+2. Delete the old `gameoptions.inc.php` file
+
+### gamepreferences.json (Optional)
+
+Player-specific preferences (e.g., animations on/off, card back style).
+
+```json
+[
+  {
+    "name": 100,
+    "needReload": false,
+    "values": {
+      "1": {"name": "Enabled"},
+      "2": {"name": "Disabled"}
+    },
+    "default": 1
+  }
+]
+```
 
 ---
 
@@ -146,14 +286,40 @@ function __construct() {
 }
 ```
 
-#### Setup New Game
+#### Setup New Game ⭐ Modern Format
 ```php
 protected function setupNewGame($players, $options = array()) {
     // Set player colors
-    // Deal initial cards
-    // Initialize stats
-    // Set game state initial values
+    $gameinfos = self::getGameinfos();
+    $default_colors = $gameinfos['player_colors'];
+    
+    // Create players
+    $sql = "INSERT INTO player (player_id, player_color, player_canal, player_name, player_avatar) VALUES ";
+    $values = array();
+    foreach($players as $player_id => $player) {
+        $color = array_shift($default_colors);
+        $values[] = "('".$player_id."','$color','".$player['player_canal']."','".addslashes($player['player_name'])."','".addslashes($player['player_avatar'])."')";
+    }
+    $sql .= implode($values, ',');
+    self::DbQuery($sql);
+    self::reattributeColorsBasedOnPreferences($players, $gameinfos['player_colors']);
+    self::reloadPlayersBasicInfos();
+    
+    // Initialize game state values
+    self::setGameStateInitialValue('round_number', 1);
+    
+    // Initialize statistics
+    self::initStat('table', 'rounds_played', 0);
+    self::initStat('player', 'cards_played', 0);
+    
+    // Deal initial cards, set up game board, etc.
+    // ...
+    
+    // Activate first player
     $this->activeNextPlayer();
+    
+    // MODERN: Return initial state ID (replaces deprecated state 1)
+    return 10;  // Start at your first real game state
 }
 ```
 
@@ -310,11 +476,15 @@ $die_result = bga_rand(1, 6);
 shuffle($deck);
 ```
 
-### Player Actions (Autowired)
+### Player Actions (Auto-wired) ⭐ Modern Approach
 
+**Auto-wired actions** eliminate the need for `.action.php` passthrough files. Use PHP 8 attributes to define action parameters directly on game logic methods.
+
+#### Basic Auto-wired Action
 ```php
-// Action method in Game.php
-function actPlayCard(int $card_id, #[IntParam(min: 1, max: 10)] int $target) {
+// In [gamename].game.php
+#[ActionParam('card_id', AT_posint, true)]  // Parameter validation attribute
+function playCard(int $card_id) {
     self::checkAction('playCard');
     $player_id = self::getActivePlayerId();
     
@@ -331,6 +501,71 @@ function actPlayCard(int $card_id, #[IntParam(min: 1, max: 10)] int $target) {
     $this->gamestate->nextState('cardPlayed');
 }
 ```
+
+#### Multiple Parameters
+```php
+#[ActionParam('card_id', AT_posint, true)]
+#[ActionParam('target_id', AT_posint, true)]
+function playCardOnTarget(int $card_id, int $target_id) {
+    self::checkAction('playCardOnTarget');
+    // ... implementation
+}
+```
+
+#### No Parameters
+```php
+// No attribute needed if no parameters
+function passAction() {
+    self::checkAction('pass');
+    // ... implementation
+}
+```
+
+#### Parameter Types
+- `AT_posint` - Positive integer
+- `AT_int` - Any integer
+- `AT_bool` - Boolean
+- `AT_alphanum` - Alphanumeric string
+- `AT_numberlist` - Comma-separated list of numbers
+- `AT_email` - Email address
+- `AT_url` - URL
+
+#### JavaScript Client Call
+```javascript
+// Modern approach with bgaPerformAction()
+this.bgaPerformAction('playCard', {
+    card_id: cardId
+});
+
+// Multiple parameters
+this.bgaPerformAction('playCardOnTarget', {
+    card_id: cardId,
+    target_id: targetId
+});
+
+// No parameters
+this.bgaPerformAction('passAction');
+```
+
+#### Legacy .action.php (Deprecated)
+```php
+// OLD WAY - Don't use this anymore
+class action_mygame extends APP_GameAction {
+    public function playCard() {
+        self::setAjaxMode();
+        $card_id = self::getArg("card_id", AT_posint, true);
+        $this->game->playCard($card_id);
+        self::ajaxResponse();
+    }
+}
+```
+
+**Benefits of Auto-wired Actions:**
+- ✅ Less boilerplate code
+- ✅ Better type safety with PHP 8 type hints
+- ✅ Automatic parameter validation
+- ✅ No duplicate code between action file and game logic
+- ✅ Cleaner project structure (one less file)
 
 ### Zombie Player Handling
 
@@ -569,19 +804,16 @@ onCancelSelection: function() {
 | `multipleactiveplayer` | Multiple active players | Simultaneous actions |
 | `game` | No active players | Automatic transitions, calculations |
 
-### State Definition Structure
+### State Definition Structure ⭐ Modern Format
+
+**Note:** States 1 (gameSetup) and 99 (gameEnd) are **deprecated**. Return the initial state ID from `setupNewGame()` instead.
 
 ```php
 $machinestates = array(
-    1 => array(
-        "name" => "gameSetup",
-        "description" => "",
-        "type" => "manager",
-        "action" => "stGameSetup",
-        "transitions" => array("" => 2)
-    ),
+    // State 1 is deprecated - don't use it
+    // Instead, return initial state from setupNewGame(): return 10;
     
-    2 => array(
+    10 => array(
         "name" => "playerTurn",
         "description" => clienttranslate('${actplayer} must play a card'),
         "descriptionmyturn" => clienttranslate('${you} must play a card'),
@@ -593,34 +825,30 @@ $machinestates = array(
         )
     ),
     
-    3 => array(
+    20 => array(
         "name" => "nextPlayer",
         "description" => "",
         "type" => "game",
         "action" => "stNextPlayer",
         "updateGameProgression" => true,
         "transitions" => array(
-            "nextPlayer" => 2,
-            "endGame" => 99
+            "nextPlayer" => 10,
+            "endGame" => 99  // Can still transition to 99, just don't define it
         )
     ),
     
-    10 => array(
+    30 => array(
         "name" => "multiplayerState",
         "description" => clienttranslate('Other players must choose'),
         "descriptionmyturn" => clienttranslate('${you} must choose'),
         "type" => "multipleactiveplayer",
         "possibleactions" => array("choose"),
-        "transitions" => array("next" => 3)
-    ),
-    
-    99 => array(
-        "name" => "gameEnd",
-        "description" => clienttranslate("End of game"),
-        "type" => "manager",
-        "action" => "stGameEnd",
-        "args" => "argGameEnd"
+        "transitions" => array("next" => 20)
     )
+    
+    // State 99 is deprecated - don't define it
+    // Framework handles game end automatically when you call:
+    // $this->gamestate->nextState("endGame");
 );
 ```
 
@@ -1085,5 +1313,34 @@ throw new BgaVisibleSystemException("Debug: " . print_r($data, true));
 
 ---
 
+## 📋 Migration Checklist: Legacy to Modern BGA
+
+If you have an older BGA project, use this checklist to modernize it:
+
+- [ ] Remove deprecated `states 1 and 99` from states.inc.php
+- [ ] Add `return 10;` (or your initial state ID) at end of setupNewGame()
+- [ ] Convert `.action.php` passthrough methods to auto-wired actions with `#[ActionParam]` attributes
+- [ ] Delete `.action.php` file after converting all actions
+- [ ] Replace `this.ajaxcall()` with `this.bgaPerformAction()` in JavaScript
+- [ ] Create `stats.json` from stats.inc.php and delete the .inc.php file
+- [ ] Create `gameoptions.json` from gameoptions.inc.php and delete the .inc.php file
+- [ ] Create `gamepreferences.json` if needed
+- [ ] Create empty `modules/php/Game.php` file
+- [ ] Remove deprecated keys from `gameinfos.inc.php`:
+  - [ ] designer, artist, year
+  - [ ] presentation, complexity, luck, strategy, diplomacy
+  - [ ] is_beta, tags
+  - [ ] is_sandbox, turnControl
+- [ ] Delete `version.php` if it exists
+- [ ] Delete `img/game_box.jpg` and `img/game_box.png`
+- [ ] Remove deprecated `getGameName()` function from game.php and view.php
+- [ ] Set game metadata in Game Metadata Manager web interface
+- [ ] Click "Reload game informations" after gameinfos.inc.php changes
+- [ ] Click "Reload statistics configuration" after creating stats.json
+- [ ] Click "Reload game options configuration" after creating gameoptions.json
+
+---
+
 **Last Updated:** 2025-11-29
 **BGA Platform Version:** PHP 8.4, MySQL 5.7, Dojo 1.15
+**Guide Version:** 2.0 - Modernized for 2025 BGA Standards
