@@ -1,27 +1,27 @@
 {OVERALL_GAME_HEADER}
 
-<!-- 
+<!--
 --------
 -- BGA framework: © Gregory Isabelli <gisabelli@boardgamearena.com> & Emmanuel Colin <ecolin@boardgamearena.com>
 -- FlapjacksAndSasquatches implementation : © <Your name here> <Your email address here>
--- 
+--
 -- This code has been produced on the BGA studio platform for use on http://boardgamearena.com.
 -- See http://en.boardgamearena.com/#!doc/Studio for more information.
 -------
 
     flapjacksandsasquatches_flapjacksandsasquatches.tpl
-    
+
     This is the HTML template of your game.
-    
+
     Everything you are writing in this file will be displayed in the HTML page of your game user interface,
     in the "main game zone" of the screen.
-    
+
     You can use in this template:
     _ variables, with the format {MY_VARIABLE_ELEMENT}.
     _ HTML block, with the BEGIN/END format
-    
+
     See your "view" PHP file to check how to set variables and control blocks
-    
+
     Please REMOVE this comment before publishing your game on BGA
 -->
 
@@ -62,12 +62,34 @@
 
 <script type="text/javascript">
     // Javascript HTML templates
-    var jstpl_player_board = '\<div class="cp_board">\
-        <div class="player_name">${name}</div>\
-        <div class="player_score">${score}</div>\
+
+    // Card template for use with BGA Stock
+    var jstpl_card = '<div class="card" id="card_${id}" style="background-position:-${x}px -${y}px"></div>';
+
+    // Chop token for tracking progress on trees
+    var jstpl_chop_token = '<div class="chop_token" id="chop_token_${player_id}_${number}"></div>';
+
+    // Player board components
+    var jstpl_player_board = '<div class="cp_board">\
+        <div id="player_board_${id}" class="player_board_content">\
+            <div class="player_name" style="color:#${color}">${name}</div>\
+            <div class="player_score_wrap">\
+                <span class="player_score_label">Points:</span>\
+                <span id="player_score_${id}" class="player_score">${score}</span>\
+            </div>\
+        </div>\
     </div>';
 
-    var jstpl_chop_token = '\<div class="chop_token" id="chop_token_${token_id}"></div>';
+    // Tree card display with chop tracking
+    var jstpl_tree = '<div class="tree_card" id="tree_${player_id}" data-tree-id="${tree_id}">\
+        <div class="tree_name">${tree_name}</div>\
+        <div class="tree_progress">\
+            <span class="chops_current" id="chops_current_${player_id}">0</span> / \
+            <span class="chops_required">${chops_required}</span>\
+        </div>\
+        <div class="tree_points">Worth: ${points} points</div>\
+        <div class="chop_markers" id="chop_markers_${player_id}"></div>\
+    </div>';
 </script>
 
 {OVERALL_GAME_FOOTER}

@@ -15,39 +15,36 @@
 
 /*
     This is the CSS stylesheet of your game User Interface.
-    
+
     Styles defined on this file will be applied to the HTML elements you define in your
     HTML template (flapjacksandsasquatches_flapjacksandsasquatches.tpl), and to HTML elements you create dynamically
     (in flapjacksandsasquatches.js).
-    
+
     Usually, you are using CSS to:
-    
+
     1°) define the overall layout of your game
         (ex: place the board on the top left, place player's hand beside, place the deck on the right, ...).
 
     2°) create your CSS-sprites:
         All images of your games should be gathered into a small number of image files. Then, using
-        background-image and background-position CSS properties, you create HTML blocks that can 
+        background-image and background-position CSS properties, you create HTML blocks that can
         display these images correctly (see example below).
-    
+
     3°) ... anything else:
         It is really easy to add and remove CSS classes dynamically from your Javascript with
         dojo.addClass and dojo.removeClass. It is also easy to check if an element has a class
         (dojo.hasClass) or to get all elements with a specific class (dojo.query). This is why,
         very often, using CSS classes for the logic of your user interface allow you to do complex
         thing easily.
-        
-        
+
+
      Note: on the production platform, this file will be compressed and comments will be removed.
            Consequently, don't hesitate to put as many comments as necessary.
 */
 
-
 /* Note: you must not use any @import directive */
 
-
 /********* You can start writing your CSS below this line: **********/
-
 
 /*
     Example of CSS sprites (a black token and a white token, 20x20px each, embedded in the same "tokens.png" 40x20px image):
@@ -70,74 +67,207 @@
 /* Game area */
 #flapjacksandsasquatches_game_area {
     width: 100%;
-    height: 100%;
+    min-height: 600px;
     position: relative;
 }
 
-/* Center area */
+/* Center area - decks */
 #center_area {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
+    text-align: center;
+    padding: 20px;
+    margin: 20px auto;
+    max-width: 400px;
     display: flex;
     gap: 20px;
+    justify-content: center;
+    align-items: center;
 }
 
 /* Decks */
 .deck {
     width: 72px;
     height: 96px;
-    background: #ddd;
-    border: 2px solid #999;
+    background: linear-gradient(135deg, #8b4513 0%, #654321 100%);
+    border: 2px solid #333;
     border-radius: 5px;
     cursor: pointer;
-    background-image: url('img/cards.jpg'); /* Using existing card style */
-    background-size: cover;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+    position: relative;
+    transition: transform 0.2s;
+}
+
+.deck:hover {
+    transform: scale(1.05);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+}
+
+#tree_deck::before {
+    content: "Trees";
+    position: absolute;
+    bottom: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 10px;
+    white-space: nowrap;
+}
+
+#jack_deck::before {
+    content: "Cards";
+    position: absolute;
+    bottom: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 10px;
+    white-space: nowrap;
+}
+
+#discard_pile::before {
+    content: "Discard";
+    position: absolute;
+    bottom: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 10px;
+    white-space: nowrap;
 }
 
 /* Player areas */
 #player_areas {
-    position: absolute;
-    width: 100%;
-    height: 100%;
     display: flex;
-    flex-direction: column;
-    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 20px;
 }
 
 .player_area {
-    padding: 10px;
-    margin: 10px;
-    border: 1px solid #ccc;
+    flex: 1;
+    min-width: 300px;
+    padding: 15px;
+    background: #f5f5dc;
+    border: 2px solid #8b4513;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+}
+
+.player_area.selectable {
+    cursor: pointer;
+    border-color: #ff6600;
+    box-shadow: 0 0 10px rgba(255, 102, 0, 0.5);
+}
+
+.player_area.selectable:hover {
+    background: #ffffed;
+    transform: scale(1.02);
+    transition: all 0.2s;
+}
+
+.player_area.targeted {
+    border-color: #ff0000;
+    background: #ffe0e0;
+    animation: pulse 0.5s ease-in-out 3;
+}
+
+@keyframes pulse {
+    0%,
+    100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.03);
+    }
+}
+
+.playertablename {
+    font-weight: bold;
+    font-size: 16px;
+    margin-bottom: 10px;
+    padding: 5px;
+    background: rgba(255, 255, 255, 0.5);
     border-radius: 5px;
 }
 
-.player_name {
-    font-weight: bold;
+.player_board_content {
     margin-bottom: 10px;
 }
 
+.player_score_wrap {
+    display: inline-block;
+    padding: 5px 10px;
+    background: #fff;
+    border-radius: 5px;
+    margin-left: 10px;
+}
+
+.player_score_label {
+    font-size: 12px;
+    color: #666;
+    margin-right: 5px;
+}
+
+.player_score {
+    font-weight: bold;
+    font-size: 18px;
+    color: #228b22;
+}
+
 .player_hand {
-    min-height: 120px;
+    min-height: 100px;
     margin: 10px 0;
     padding: 10px;
-    background: rgba(0,0,0,0.1);
+    background: rgba(139, 69, 19, 0.1);
+    border: 1px dashed #8b4513;
     border-radius: 5px;
 }
 
 .player_play_area {
     display: flex;
-    gap: 20px;
+    gap: 15px;
     margin-top: 10px;
+    flex-wrap: wrap;
 }
 
-.tree_area, .equipment_area, .cut_pile {
-    min-height: 96px;
-    min-width: 72px;
-    border: 1px dashed #999;
+.tree_area,
+.equipment_area,
+.cut_pile {
+    min-height: 120px;
+    min-width: 150px;
+    border: 2px dashed #999;
     border-radius: 5px;
     padding: 10px;
+    background: rgba(255, 255, 255, 0.5);
+}
+
+.tree_area {
+    flex: 2;
+}
+
+.equipment_area {
+    flex: 1;
+}
+
+.cut_pile {
+    flex: 1;
+}
+
+/* Current player's hand */
+#myhand_wrap {
+    margin: 20px;
+    padding: 15px;
+    background: #fff8dc;
+    border: 2px solid #8b4513;
+    border-radius: 10px;
+}
+
+#myhand_wrap h3 {
+    margin: 0 0 10px 0;
+    color: #654321;
+}
+
+#myhand {
+    min-height: 120px;
+    padding: 10px;
+    background: rgba(139, 69, 19, 0.05);
+    border-radius: 5px;
 }
 
 /* Card styles */
@@ -145,41 +275,96 @@
     width: 72px;
     height: 96px;
     background: white;
-    border: 1px solid #999;
+    border: 2px solid #333;
     border-radius: 5px;
     position: relative;
     cursor: pointer;
-    transition: transform 0.2s;
-    background-image: url('img/cards.jpg'); /* Using existing card style */
-    background-size: cover;
+    transition: all 0.2s;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
 .card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.3);
+    z-index: 10;
+}
+
+.stockitem.selected {
+    border-color: #ff6600;
+    box-shadow: 0 0 10px rgba(255, 102, 0, 0.8);
     transform: translateY(-5px);
-    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+}
+
+/* Tree card display */
+.tree_card {
+    background: linear-gradient(135deg, #228b22 0%, #006400 100%);
+    color: white;
+    padding: 15px;
+    border-radius: 10px;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+    min-width: 150px;
+}
+
+.tree_name {
+    font-weight: bold;
+    font-size: 16px;
+    margin-bottom: 10px;
+    text-align: center;
+}
+
+.tree_progress {
+    font-size: 24px;
+    font-weight: bold;
+    text-align: center;
+    margin: 10px 0;
+    padding: 5px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 5px;
+}
+
+.chops_current {
+    color: #ffff00;
+}
+
+.tree_points {
+    text-align: center;
+    font-size: 14px;
+    margin-top: 10px;
+    padding: 5px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 5px;
+}
+
+.chop_markers {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-top: 10px;
+    justify-content: center;
 }
 
 /* Chop tokens */
 .chop_token {
-    width: 20px;
-    height: 20px;
-    background: #8B4513;
+    width: 15px;
+    height: 15px;
+    background: #ffd700;
+    border: 2px solid #ffa500;
     border-radius: 50%;
-    position: absolute;
-    top: 5px;
-    right: 5px;
+    display: inline-block;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+/* Stock item positioning */
+.stockitem {
+    display: inline-block;
+    margin: 5px;
 }
 
 /* Preserve existing playertablecard style */
 .playertablecard {
     display: inline-block;
     position: relative;
-    margin-top: 5px;
+    margin: 5px;
     width: 72px;
     height: 96px;
-    background-image: url('img/cards.jpg');
 }
-
-
-
-

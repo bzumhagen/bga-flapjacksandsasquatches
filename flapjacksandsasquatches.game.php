@@ -308,31 +308,165 @@ class FlapjacksAndSasquatches extends Table
         (note: each method below must match an input method in flapjacksandsasquatches.action.php)
     */
 
-    /*
-
-    Example:
-
     function playCard( $card_id )
     {
-        // Check that this is the player's turn and that it is a "possible action" at this game state (see states.inc.php)
         self::checkAction( 'playCard' );
-
         $player_id = self::getActivePlayerId();
 
-        // Add your game logic to play a card there
-        ...
+        // Get card info
+        $card = $this->cards->getCard( $card_id );
+        if( !$card || $card['location'] != 'hand' || $card['location_arg'] != $player_id ) {
+            throw new BgaUserException( self::_("This card is not in your hand") );
+        }
 
-        // Notify all players about the card played
+        $card_info = $this->getCardInfo( $card );
+
+        // Move card to limbo (pending state until resolution)
+        $this->cards->moveCard( $card_id, 'limbo' );
+
+        // Store pending card for reaction/resolution
+        self::setGameStateValue( 'reaction_pending_card', $card_id );
+
+        // Notify card played
         self::notifyAllPlayers( "cardPlayed", clienttranslate( '${player_name} plays ${card_name}' ), array(
             'player_id' => $player_id,
             'player_name' => self::getActivePlayerName(),
-            'card_name' => $card_name,
+            'card_name' => $card_info['name'],
+            'card_id' => $card_id,
+            'card_type' => $card_info['type']
+        ) );
+
+        // Check if card needs a target
+        if( $this->cardNeedsTarget( $card_info ) ) {
+            $this->gamestate->nextState( 'selectTarget' );
+        } else {
+            $this->gamestate->nextState( 'checkReaction' );
+        }
+    }
+
+    function discardCard( $card_id )
+    {
+        self::checkAction( 'discardCard' );
+        $player_id = self::getActivePlayerId();
+
+        // Get card info
+        $card = $this->cards->getCard( $card_id );
+        if( !$card || $card['location'] != 'hand' || $card['location_arg'] != $player_id ) {
+            throw new BgaUserException( self::_("This card is not in your hand") );
+        }
+
+        $card_info = $this->getCardInfo( $card );
+
+        // Move to discard
+        $this->cards->moveCard( $card_id, 'discard' );
+
+        // Notify discard
+        self::notifyAllPlayers( "cardDiscarded", clienttranslate( '${player_name} discards a card' ), array(
+            'player_id' => $player_id,
+            'player_name' => self::getActivePlayerName(),
             'card_id' => $card_id
         ) );
 
+        // Draw replacement card
+        $this->gamestate->nextState( 'drawCard' );
     }
 
-    */
+    function selectTarget( $target_id )
+    {
+        self::checkAction( 'selectTarget' );
+        $player_id = self::getActivePlayerId();
+
+        // Validate target exists and is not the active player
+        $players = self::loadPlayersBasicInfos();
+        if( !isset( $players[$target_id] ) ) {
+            throw new BgaUserException( self::_("Invalid target player") );
+        }
+        if( $target_id == $player_id ) {
+            throw new BgaUserException( self::_("You cannot target yourself") );
+        }
+
+        // Store target
+        self::setGameStateValue( 'reaction_pending_player', $target_id );
+
+        // Notify target selected
+        self::notifyAllPlayers( "targetSelected", clienttranslate( '${player_name} targets ${target_name}' ), array(
+            'player_id' => $player_id,
+            'player_name' => self::getActivePlayerName(),
+            'target_id' => $target_id,
+            'target_name' => self::getPlayerNameById( $target_id )
+        ) );
+
+        // Move to reaction check
+        $this->gamestate->nextState( 'next' );
+    }
+
+    function playReaction( $card_id )
+    {
+        self::checkAction( 'playReaction' );
+        $player_id = self::getCurrentPlayerId();
+
+        // Get card info
+        $card = $this->cards->getCard( $card_id );
+        if( !$card || $card['location'] != 'hand' || $card['location_arg'] != $player_id ) {
+            throw new BgaUserException( self::_("This card is not in your hand") );
+        }
+
+        $card_info = $this->getCardInfo( $card );
+
+        // Validate it's a reaction card
+        if( !isset( $card_info['can_react'] ) || !$card_info['can_react'] ) {
+            throw new BgaUserException( self::_("This card cannot be played as a reaction") );
+        }
+
+        // Move to discard (reactions are discarded after use)
+        $this->cards->moveCard( $card_id, 'discard' );
+
+        // Deactivate this player
+        $this->gamestate->setPlayerNonMultiactive( $player_id, 'next' );
+
+        // Notify reaction played
+        self::notifyAllPlayers( "reactionPlayed", clienttranslate( '${player_name} plays ${card_name} as a reaction!' ), array(
+            'player_id' => $player_id,
+            'player_name' => self::getPlayerNameById( $player_id ),
+            'card_name' => $card_info['name'],
+            'card_id' => $card_id,
+            'card_type' => $card_info['type']
+        ) );
+    }
+
+    function passReaction()
+    {
+        self::checkAction( 'passReaction' );
+        $player_id = self::getCurrentPlayerId();
+
+        // Deactivate this player
+        $this->gamestate->setPlayerNonMultiactive( $player_id, 'next' );
+
+        // Notify pass
+        self::notifyAllPlayers( "reactionPassed", clienttranslate( '${player_name} passes' ), array(
+            'player_id' => $player_id,
+            'player_name' => self::getPlayerNameById( $player_id )
+        ) );
+    }
+
+    // Helper: Determine if a card needs target selection
+    function cardNeedsTarget( $card_info )
+    {
+        // Equipment and Help cards that affect other players need targets
+        $targeting_cards = array(
+            'equipment_double_bit_axe',
+            'equipment_throwing_axe',
+            'help_give_me_a_hand',
+            'help_long_saw',
+            'help_lumberjack_breakfast',
+            'sasquatch_hatchet_happens',
+            'sasquatch_splinter',
+            'sasquatch_timber',
+            'sasquatch_tree_hugger'
+        );
+
+        return in_array( $card_info['card_type'], $targeting_cards );
+    }
 
 
 //////////////////////////////////////////////////////////////////////////////

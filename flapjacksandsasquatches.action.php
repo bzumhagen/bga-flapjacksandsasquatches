@@ -7,7 +7,7 @@
  * This code has been produced on the BGA studio platform for use on https://boardgamearena.com.
  * See http://en.doc.boardgamearena.com/Studio for more information.
  * -----
- * 
+ *
  * flapjacksandsasquatches.action.php
  *
  * FlapjacksAndSasquatches main action entry point
@@ -15,15 +15,15 @@
  *
  * In this file, you are describing all the methods that can be called from your
  * user interface logic (javascript).
- *       
+ *
  * If you define a method "myAction" here, then you can call it from your javascript code with:
  * this.ajaxcall( "/flapjacksandsasquatches/flapjacksandsasquatches/myAction.html", ...)
  *
  */
-  
-  
+
+
   class action_flapjacksandsasquatches extends APP_GameAction
-  { 
+  {
     // Constructor: please do not modify
    	public function __default()
   	{
@@ -37,32 +37,74 @@
             $this->view = "flapjacksandsasquatches_flapjacksandsasquatches";
             self::trace( "Complete reinitialization of board game" );
       }
-  	} 
-  	
-  	// TODO: defines your action entry points there
+  	}
 
-
-    /*
-    
-    Example:
-  	
-    public function myAction()
+    /**
+     * Play a card from hand
+     */
+    public function playCard()
     {
-        self::setAjaxMode();     
+        self::setAjaxMode();
 
-        // Retrieve arguments
-        // Note: these arguments correspond to what has been sent through the javascript "ajaxcall" method
-        $arg1 = self::getArg( "myArgument1", AT_posint, true );
-        $arg2 = self::getArg( "myArgument2", AT_posint, true );
+        $card_id = self::getArg( "card_id", AT_posint, true );
 
-        // Then, call the appropriate method in your game logic, like "playCard" or "myAction"
-        $this->game->myAction( $arg1, $arg2 );
+        $this->game->playCard( $card_id );
 
-        self::ajaxResponse( );
+        self::ajaxResponse();
     }
-    
-    */
+
+    /**
+     * Discard a card from hand
+     */
+    public function discardCard()
+    {
+        self::setAjaxMode();
+
+        $card_id = self::getArg( "card_id", AT_posint, true );
+
+        $this->game->discardCard( $card_id );
+
+        self::ajaxResponse();
+    }
+
+    /**
+     * Select a target for a card effect
+     */
+    public function selectTarget()
+    {
+        self::setAjaxMode();
+
+        $target_id = self::getArg( "target_id", AT_posint, true );
+
+        $this->game->selectTarget( $target_id );
+
+        self::ajaxResponse();
+    }
+
+    /**
+     * Play a reaction card
+     */
+    public function playReaction()
+    {
+        self::setAjaxMode();
+
+        $card_id = self::getArg( "card_id", AT_posint, true );
+
+        $this->game->playReaction( $card_id );
+
+        self::ajaxResponse();
+    }
+
+    /**
+     * Pass on playing a reaction card
+     */
+    public function passReaction()
+    {
+        self::setAjaxMode();
+
+        $this->game->passReaction();
+
+        self::ajaxResponse();
+    }
 
   }
-  
-

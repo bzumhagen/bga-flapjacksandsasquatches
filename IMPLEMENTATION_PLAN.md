@@ -10,29 +10,55 @@ Implementation of the card game "Flapjacks and Sasquatches" on Board Game Arena 
 
 ---
 
-## Current Status Assessment
+## Current Status Assessment (Updated: 2025-11-29)
 
-### ✅ Completed
-- Basic BGA project structure created
-- Game metadata configured (gameinfos.inc.php)
-- Red cards material defined (40 card types in material.inc.php)
-- Game rules documented (rules.md)
-- Card sprite images available (red_cards.jpg, tree_cards.jpg)
-- Basic JavaScript framework setup
-- Basic state machine skeleton (states.inc.php)
+### ✅ PHASE 1 COMPLETED: Core Infrastructure
+- ✅ Database schema (dbmodel.sql) - Complete
+- ✅ Material definitions (material.inc.php) - All 100 red cards + 33 tree cards defined
+- ✅ Statistics configuration (stats.inc.php) - Player and table stats configured
+- ✅ Game setup method (setupNewGame) - Card decks, initial dealing implemented
+- ✅ getAllDatas method - Returns game state to client
+- ✅ Card count verified: 133 cards (100 red + 33 trees) vs 136 expected - 3 cards missing
 
-### ❌ Missing/Incomplete
-- Tree cards material definition
-- Database schema (no tables defined yet)
-- Game logic implementation (setupNewGame, core game loop)
-- Complete state machine implementation
-- Card deck management using BGA Deck library
-- Dice rolling mechanism
-- Chop token tracking
-- Player action handlers
-- Client-side UI implementation
-- Game statistics configuration
-- Complete notification system
+### ✅ PHASE 2 COMPLETED: Game State Machine
+- ✅ Complete state machine (states.inc.php) - 15 states with proper transitions
+- ✅ State action methods (st* methods) - 13 state handlers implemented
+- ✅ State argument methods (arg* methods) - Arguments for client states
+- ✅ **CRITICAL FIX:** Target selection moved BEFORE reaction window (user feedback)
+
+### ✅ PHASE 3 COMPLETED: Basic Player Actions
+- ✅ Action entry points (flapjacksandsasquatches.action.php) - 5 action methods
+- ✅ Game logic methods (flapjacksandsasquatches.game.php) - playCard, discardCard, selectTarget, playReaction, passReaction
+- ✅ Card validation and state transitions
+- ✅ Helper method for target requirement checking
+
+### ✅ PHASE 5 COMPLETED: Client-Side UI (Minimal UX)
+- ✅ HTML template (flapjacksandsasquatches_flapjacksandsasquatches.tpl) - Enhanced with proper structure
+- ✅ JavaScript client (flapjacksandsasquatches.js) - Complete rewrite with:
+  - Stock management for cards
+  - State handlers (playerTurn, selectTarget, reactionWindow)
+  - Action methods (playCard, discardCard, selectTarget, passReaction)
+  - Notification handlers (11 notification types)
+  - Player state display (trees, equipment, scores)
+- ✅ CSS styling (flapjacksandsasquatches.css) - Comprehensive styling with:
+  - Game area layout
+  - Player areas with animations
+  - Card hover effects
+  - Tree display with progress tracking
+  - Chop token visualization
+- ✅ View configuration (flapjacksandsasquatches.view.php) - Already properly configured
+
+### ❌ PHASE 4 DEFERRED: Dice Rolling & Card Effects
+- ❌ Dice rolling mechanism (not yet implemented - deferred for minimal UX)
+- ❌ Individual card effect handlers (deferred for minimal UX)
+- ❌ Chop application logic (deferred for minimal UX)
+- ❌ Equipment/modifier tracking (deferred for minimal UX)
+
+### 📝 NOTES
+- Card count discrepancy documented in material.inc.php header
+- User chose "Option A" - minimal path to UX (implement basic actions first, then build out)
+- User will handle git commits manually
+- Ready for initial BGA Studio testing
 
 ---
 
