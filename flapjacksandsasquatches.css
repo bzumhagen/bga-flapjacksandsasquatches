@@ -1,7 +1,7 @@
 /**
  *------
  * BGA framework: © Gregory Isabelli <gisabelli@boardgamearena.com> & Emmanuel Colin <ecolin@boardgamearena.com>
- * FlapjacksAndSasquatches implementation : © <Your name here> <Your email address here>
+ * FlapjacksAndSasquatches implementation : © Benjamin Zumhagen bzumhagen@gmail.com
  *
  * This code has been produced on the BGA studio platform for use on http://boardgamearena.com.
  * See http://en.boardgamearena.com/#!doc/Studio for more information.
@@ -85,8 +85,8 @@
 
 /* Decks */
 .deck {
-    width: 72px;
-    height: 96px;
+    width: 120px;
+    height: 167px;
     background: linear-gradient(135deg, #8b4513 0%, #654321 100%);
     border: 2px solid #333;
     border-radius: 5px;
@@ -94,6 +94,8 @@
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
     position: relative;
     transition: transform 0.2s;
+    background-repeat: no-repeat;
+    background-position: 0 0;
 }
 
 .deck:hover {
@@ -239,6 +241,49 @@
 
 .tree_area {
     flex: 2;
+    min-width: 150px;
+    min-height: 200px;
+}
+
+.tree_display {
+    position: relative;
+    display: inline-block;
+}
+
+.tree_card_visual {
+    display: block;
+}
+
+.tree_info_overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 3px 5px;
+    font-size: 9px;
+    line-height: 1.2;
+}
+
+.tree_name {
+    font-weight: bold;
+    margin-bottom: 2px;
+    font-size: 10px;
+}
+
+.tree_progress {
+    margin-bottom: 2px;
+}
+
+.chops_current {
+    font-weight: bold;
+    color: #4caf50;
+}
+
+.tree_points {
+    font-size: 8px;
+    color: #ffd700;
 }
 
 .equipment_area {
@@ -358,6 +403,11 @@
 .stockitem {
     display: inline-block;
     margin: 5px;
+    background-size: 1080px auto !important; /* 9 cards x 120px = 1080px width */
+}
+
+#myhand .stockitem {
+    background-size: 1080px auto !important; /* Scale red_cards.jpg: 9 cards x 120px = 1080px width */
 }
 
 /* Preserve existing playertablecard style */

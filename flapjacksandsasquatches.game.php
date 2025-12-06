@@ -125,6 +125,7 @@ class FlapjacksAndSasquatches extends Table
         // Card definitions for client
         $result['redCards'] = $this->red_cards;
         $result['treeCards'] = $this->tree_cards;
+        $result['cardBacks'] = $this->card_backs;
         $result['constants'] = $this->game_constants;
 
         $current_player_id = self::getCurrentPlayerId();    // !! We must only return informations visible by this player !!

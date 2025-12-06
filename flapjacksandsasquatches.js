@@ -1,7 +1,7 @@
 /**
  *------
  * BGA framework: © Gregory Isabelli <gisabelli@boardgamearena.com> & Emmanuel Colin <ecolin@boardgamearena.com>
- * FlapjacksAndSasquatches implementation : © <Your name here> <Your email address here>
+ * FlapjacksAndSasquatches implementation : © Benjamin Zumhagen bzumhagen@gmail.com
  *
  * This code has been produced on the BGA studio platform for use on http://boardgamearena.com.
  * See http://en.boardgamearena.com/#!doc/Studio for more information.
@@ -26,9 +26,9 @@ define([
     constructor: function () {
       console.log("flapjacksandsasquatches constructor");
 
-      // Card dimensions
-      this.cardWidth = 72;
-      this.cardHeight = 96;
+      // Card dimensions (display size - actual sprites are 358.44 x 500)
+      this.cardWidth = 120;
+      this.cardHeight = 167;
 
       // Stock objects for different card areas
       this.playerHand = null;
@@ -73,6 +73,9 @@ define([
       // Setup card stocks
       this.setupStocks();
 
+      // Setup deck displays
+      this.setupDecks();
+
       // Display initial game state
       this.updateDisplay(gamedatas);
 
@@ -91,7 +94,12 @@ define([
         this.cardWidth,
         this.cardHeight,
       );
-      this.playerHand.image_items_per_row = 10;
+
+      // Red card sprite has 9 cards per row, each 358.44 x 500 px
+      // But we display them at 72 x 96 px
+      this.playerHand.image_items_per_row = 9;
+
+      // Set selection properties
       this.playerHand.setSelectionMode(1);
       this.playerHand.setSelectionAppearance("class");
 
@@ -108,6 +116,62 @@ define([
       );
     },
 
+    setupDecks: function () {
+      // Setup Jack Deck (red cards) card back
+      var redBack = this.gamedatas.cardBacks.red_card_back;
+      var redCardsPerRow = redBack.cards_per_row;
+      var redSpritePosition = redBack.sprite_position;
+
+      // Calculate grid position (same logic as Stock component)
+      var redCol = redSpritePosition % redCardsPerRow;
+      var redRow = Math.floor(redSpritePosition / redCardsPerRow);
+
+      // Use percentage positioning like Stock component
+      // For a 9-card row, position 8 should be at 100% (8 / (9-1) * 100)
+      var redBgPosXPct = (redCol * 100) / (redCardsPerRow - 1);
+      var redBgPosYPct = redRow * 100;
+
+      // Background size is total sprite sheet width at display scale
+      var redBgSizeWidth = redCardsPerRow * this.cardWidth; // 9 * 120 = 1080px
+
+      var jackDeck = $("jack_deck");
+      if (jackDeck) {
+        dojo.style(jackDeck, {
+          backgroundImage:
+            "url(" + g_gamethemeurl + "img/" + redBack.sprite + ")",
+          backgroundPosition: redBgPosXPct + "% " + redBgPosYPct + "%",
+          backgroundSize: redBgSizeWidth + "px auto",
+        });
+      }
+
+      // Setup Tree Deck card back
+      var treeBack = this.gamedatas.cardBacks.tree_card_back;
+      var treeCardsPerRow = treeBack.cards_per_row;
+      var treeSpritePosition = treeBack.sprite_position;
+
+      // Calculate grid position (same logic as Stock component)
+      var treeCol = treeSpritePosition % treeCardsPerRow;
+      var treeRow = Math.floor(treeSpritePosition / treeCardsPerRow);
+
+      // Use percentage positioning like Stock component
+      // For a 4-card row, position 3 (row 1, col 3) should be at X: 100% (3 / (4-1) * 100), Y: 100%
+      var treeBgPosXPct = (treeCol * 100) / (treeCardsPerRow - 1);
+      var treeBgPosYPct = treeRow * 100;
+
+      // Background size is total sprite sheet width at display scale
+      var treeBgSizeWidth = treeCardsPerRow * this.cardWidth; // 4 * 120 = 480px
+
+      var treeDeck = $("tree_deck");
+      if (treeDeck) {
+        dojo.style(treeDeck, {
+          backgroundImage:
+            "url(" + g_gamethemeurl + "img/" + treeBack.sprite + ")",
+          backgroundPosition: treeBgPosXPct + "% " + treeBgPosYPct + "%",
+          backgroundSize: treeBgSizeWidth + "px auto",
+        });
+      }
+    },
+
     updateDisplay: function (gamedatas) {
       // Update player hands (only current player's hand is visible)
       if (gamedatas.hand) {
@@ -117,10 +181,29 @@ define([
         }
       }
 
-      // Update player trees and equipment
-      if (gamedatas.playerStates) {
-        for (var player_id in gamedatas.playerStates) {
-          this.updatePlayerState(player_id, gamedatas.playerStates[player_id]);
+      // Display active trees for all players
+      if (gamedatas.activeTrees) {
+        for (var i in gamedatas.activeTrees) {
+          var activeTree = gamedatas.activeTrees[i];
+          var tree = {
+            id: activeTree.tree_id,
+            card_id: activeTree.card_id,
+            type: activeTree.tree_type,
+            chops_required: activeTree.chops_required,
+            chops_current: activeTree.chop_count,
+            points: activeTree.points_value,
+          };
+          this.displayTree(activeTree.player_id, tree);
+        }
+      }
+
+      // Display equipment for all players
+      if (gamedatas.equipment) {
+        for (var i in gamedatas.equipment) {
+          this.displayEquipment(
+            gamedatas.equipment[i].player_id,
+            gamedatas.equipment[i],
+          );
         }
       }
     },
@@ -130,8 +213,12 @@ define([
 
       // Add card type if not already registered
       if (!this.playerHand.items[card.type]) {
-        var spriteUrl = g_gamethemeurl + "img/red_cards.png";
-        var spritePosition = parseInt(card.type_arg);
+        var spriteUrl = g_gamethemeurl + "img/red_cards.jpg";
+
+        // Get sprite position from card definition
+        var cardDef = this.gamedatas.redCards[card.type];
+        var spritePosition = cardDef ? cardDef.sprite_position || 0 : 0;
+
         this.playerHand.addItemType(
           card.type,
           card.type,
@@ -172,14 +259,85 @@ define([
       // Clear existing tree
       dojo.empty(treeArea);
 
-      // Create tree display
-      var html = this.format_block("jstpl_tree", {
-        player_id: player_id,
-        tree_id: tree.id,
-        tree_name: tree.name,
-        chops_required: tree.chops_required,
-        points: tree.points,
-      });
+      // Get tree card definition to find sprite position
+      var treeDef = null;
+      for (var key in this.gamedatas.treeCards) {
+        if (this.gamedatas.treeCards[key].id == tree.id) {
+          treeDef = this.gamedatas.treeCards[key];
+          break;
+        }
+      }
+
+      if (!treeDef) {
+        console.error("Tree definition not found for tree id: " + tree.id);
+        return;
+      }
+
+      // Calculate sprite position
+      var spritePosition = treeDef.sprite_position || 0;
+      var cardsPerRow = 4; // 4 tree cards per row
+
+      // Calculate grid position
+      var col = spritePosition % cardsPerRow;
+      var row = Math.floor(spritePosition / cardsPerRow);
+
+      // Use percentage positioning like Stock component and deck displays
+      var bgPosXPct = (col * 100) / (cardsPerRow - 1);
+      var bgPosYPct = row * 100;
+
+      // Background size is total sprite sheet width at display scale
+      var bgSizeWidth = cardsPerRow * this.cardWidth; // 4 * 120 = 480px
+
+      // Create tree card visual
+      var cardHtml =
+        '<div class="tree_card_visual" style="' +
+        "width: " +
+        this.cardWidth +
+        "px; " +
+        "height: " +
+        this.cardHeight +
+        "px; " +
+        "background-image: url(" +
+        g_gamethemeurl +
+        "img/tree_cards.jpg); " +
+        "background-position: " +
+        bgPosXPct +
+        "% " +
+        bgPosYPct +
+        "%; " +
+        "background-size: " +
+        bgSizeWidth +
+        "px auto;" +
+        '"></div>';
+
+      // Create tree info overlay
+      var html =
+        '<div class="tree_display" id="tree_' +
+        player_id +
+        '" data-tree-id="' +
+        tree.id +
+        '">' +
+        cardHtml +
+        '<div class="tree_info_overlay">' +
+        '<div class="tree_name">' +
+        treeDef.name +
+        "</div>" +
+        '<div class="tree_progress">' +
+        '<span class="chops_current" id="chops_current_' +
+        player_id +
+        '">0</span> / ' +
+        '<span class="chops_required">' +
+        treeDef.chops_required +
+        "</span>" +
+        "</div>" +
+        '<div class="tree_points">Worth: ' +
+        treeDef.points +
+        " points</div>" +
+        '<div class="chop_markers" id="chop_markers_' +
+        player_id +
+        '"></div>' +
+        "</div>" +
+        "</div>";
 
       dojo.place(html, treeArea);
 
@@ -492,8 +650,18 @@ define([
     notif_treeDrawn: function (notif) {
       console.log("notif_treeDrawn", notif);
 
+      // Construct tree object from notification args
+      var tree = {
+        id: notif.args.tree_id,
+        card_id: notif.args.card_id,
+        type: notif.args.tree_type,
+        chops_required: notif.args.chops_required,
+        chops_current: 0,
+        points: notif.args.points,
+      };
+
       // Display the tree for the player
-      this.displayTree(notif.args.player_id, notif.args.tree);
+      this.displayTree(notif.args.player_id, tree);
     },
 
     notif_treeChopped: function (notif) {
