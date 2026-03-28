@@ -211,24 +211,39 @@ define([
     addCardToHand: function (card) {
       if (!this.playerHand) return;
 
+      // type_arg is the material definition key (index into jackCards)
+      var cardDefId = card.type_arg;
+      var cardId = card.id;
+
       // Add card type if not already registered
-      if (!this.playerHand.items[card.type]) {
+      if (!this.playerHand.item_type[cardDefId]) {
         var spriteUrl = g_gamethemeurl + "img/red_cards.jpg";
 
         // Get sprite position from card definition
-        var cardDef = this.gamedatas.redCards[card.type];
+        var cardDef = this.gamedatas.jackCards[cardDefId];
         var spritePosition = cardDef ? cardDef.sprite_position || 0 : 0;
 
+        // Weight groups cards by type, then sorts by ID within each group
+        var typeWeights = {
+          equipment: 100,
+          plus_minus: 200,
+          help: 300,
+          action: 400,
+          sasquatch: 500,
+          reaction: 600,
+        };
+        var weight = (cardDef ? typeWeights[cardDef.type] || 0 : 0) + cardDefId;
+
         this.playerHand.addItemType(
-          card.type,
-          card.type,
+          cardDefId,
+          weight,
           spriteUrl,
           spritePosition,
         );
       }
 
       // Add card to hand
-      this.playerHand.addToStockWithId(card.type, card.id);
+      this.playerHand.addToStockWithId(cardDefId, cardId);
     },
 
     updatePlayerState: function (player_id, state) {
@@ -496,14 +511,14 @@ define([
     onPlayCard: function (card_id) {
       console.log("onPlayCard: " + card_id);
 
-      if (!this.checkAction("playCard")) {
+      if (!this.checkAction("actPlayCard")) {
         return;
       }
 
       // Deselect the card
       this.playerHand.unselectAll();
 
-      this.bgaPerformAction("playCard", {
+      this.bgaPerformAction("actPlayCard", {
         card_id: card_id,
       });
     },
@@ -513,7 +528,7 @@ define([
 
       dojo.stopEvent(evt);
 
-      if (!this.checkAction("discardCard")) {
+      if (!this.checkAction("actDiscardCard")) {
         return;
       }
 
@@ -528,7 +543,7 @@ define([
       // Deselect the card
       this.playerHand.unselectAll();
 
-      this.bgaPerformAction("discardCard", {
+      this.bgaPerformAction("actDiscardCard", {
         card_id: card_id,
       });
     },
@@ -547,7 +562,7 @@ define([
         .replace("player_", "")
         .replace("_area", "");
 
-      this.bgaPerformAction("selectTarget", {
+      this.bgaPerformAction("actSelectTarget", {
         target_id: target_id,
       });
     },
@@ -561,7 +576,7 @@ define([
         return;
       }
 
-      this.bgaPerformAction("passReaction");
+      this.bgaPerformAction("actPassReaction");
     },
 
     ///////////////////////////////////////////////////
