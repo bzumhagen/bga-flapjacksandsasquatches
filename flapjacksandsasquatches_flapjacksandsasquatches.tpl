@@ -39,6 +39,7 @@
         <div id="player_{PLAYER_ID}_area" class="player_area whiteblock playertable_{DIR}">
             <div class="playertablename" style="color:#{PLAYER_COLOR}">
                 {PLAYER_NAME}
+                <span id="skip_indicator_{PLAYER_ID}" class="skip_turn_indicator"></span>
             </div>
             <div class="player_hand" id="player_hand_{PLAYER_ID}">
                 <!-- Player hand will be populated by JavaScript -->
@@ -46,6 +47,8 @@
             <div class="player_play_area">
                 <div class="tree_area" id="tree_area_{PLAYER_ID}"></div>
                 <div class="equipment_area" id="equipment_area_{PLAYER_ID}"></div>
+                <div class="help_area" id="help_area_{PLAYER_ID}"></div>
+                <div class="modifier_area" id="modifier_area_{PLAYER_ID}"></div>
                 <div class="cut_pile" id="cut_pile_{PLAYER_ID}"></div>
             </div>
         </div>

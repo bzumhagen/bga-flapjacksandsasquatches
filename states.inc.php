@@ -105,6 +105,7 @@ $machinestates = [
         "transitions" => [
             "reaction" => 33,
             "noReaction" => 40,
+            "selectTreesToSwitch" => 35,
         ],
     ],
 
@@ -112,10 +113,10 @@ $machinestates = [
     33 => [
         "name" => "reactionWindow",
         "description" => clienttranslate(
-            'Other players may react to ${card_name} on ${target_name}',
+            '${actplayer_name} plays ${card_name}${target_desc}. Other players may react',
         ),
         "descriptionmyturn" => clienttranslate(
-            '${you} may play a reaction card',
+            '${actplayer_name} plays ${card_name}${target_desc}. ${you} may play a reaction card',
         ),
         "type" => "multipleactiveplayer",
         "args" => "argReactionWindow",
@@ -132,7 +133,35 @@ $machinestates = [
         "transitions" => [
             "blocked" => 50, // Card was blocked, skip to chopping roll
             "proceed" => 40, // No block, proceed with card effect
+            "selectTreesToSwitch" => 35, // No block
         ],
+    ],
+
+    // Validate both players have cut trees before entering selection
+    35 => [
+        "name" => "checkSwitchTagsTrees",
+        "description" => "",
+        "type" => "game",
+        "action" => "stCheckSwitchTagsTrees",
+        "transitions" => [
+            "select" => 36,
+            "noTrees" => 30, // Return to card selection
+        ],
+    ],
+
+    // Player selects targets for switch tags
+    36 => [
+        "name" => "selectTreesToSwitch",
+        "description" => clienttranslate(
+            '${actplayer} must select which cut trees to switch for ${card_name}',
+        ),
+        "descriptionmyturn" => clienttranslate(
+            '${you} must select a tree from your cut pile to switch with a tree from your target\'s cut pile for ${card_name}',
+        ),
+        "type" => "activeplayer",
+        "args" => "argSelectTreesToSwitch",
+        "possibleactions" => ["actSelectTreesToSwitch"],
+        "transitions" => ["next" => 40],
     ],
 
     // Resolve the card effect
@@ -144,6 +173,7 @@ $machinestates = [
         "transitions" => [
             "sasquatchSighting" => 41,
             "contest" => 42,
+            "selectTreesToSwitch" => 35,
             "next" => 50,
         ],
     ],
@@ -177,15 +207,42 @@ $machinestates = [
         "transitions" => ["next" => 50],
     ],
 
-    // Perform chopping roll
+    // Pre-check: does player have a chopping tool?
     50 => [
-        "name" => "choppingRoll",
-        "description" => clienttranslate('${actplayer} performs chopping roll'),
-        "descriptionmyturn" => clienttranslate(
-            '${you} perform your chopping roll',
-        ),
+        "name" => "preChoppingRoll",
+        "description" => "",
         "type" => "game",
-        "action" => "stChoppingRoll",
+        "action" => "stPreChoppingRoll",
+        "transitions" => ["roll" => 51, "skip" => 60],
+    ],
+
+    // Player clicks to roll dice
+    51 => [
+        "name" => "choppingRoll",
+        "description" => clienttranslate(
+            '${actplayer} must perform their chopping roll',
+        ),
+        "descriptionmyturn" => clienttranslate(
+            '${you} must perform your chopping roll',
+        ),
+        "type" => "activeplayer",
+        "args" => "argChoppingRoll",
+        "possibleactions" => ["actChopRoll"],
+        "transitions" => ["next" => 52],
+    ],
+
+    // Player reviews results and clicks continue
+    52 => [
+        "name" => "choppingRollResult",
+        "description" => clienttranslate(
+            '${actplayer} reviews chopping roll results',
+        ),
+        "descriptionmyturn" => clienttranslate(
+            '${you}: review your chopping roll results',
+        ),
+        "type" => "activeplayer",
+        "args" => "argChoppingRollResult",
+        "possibleactions" => ["actConfirmChopResult"],
         "transitions" => ["next" => 60],
     ],
 

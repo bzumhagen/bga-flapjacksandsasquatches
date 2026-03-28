@@ -34,7 +34,7 @@ $this->jack_cards = [
         "tooltip" => clienttranslate("Lets you make a chopping roll."),
         "qty" => 5,
         "sprite_position" => 0, // Row 0, Col 0
-        "targeted" => true,
+        "targeted" => "self",
     ],
     2 => [
         "id" => 2,
@@ -47,7 +47,7 @@ $this->jack_cards = [
         "persistent" => false,
         "qty" => 3,
         "sprite_position" => 1, // Row 0, Col 1
-        "targeted" => true,
+        "targeted" => "others",
     ],
     3 => [
         "id" => 3,
@@ -58,7 +58,7 @@ $this->jack_cards = [
         ),
         "qty" => 4,
         "sprite_position" => 4, // Row 0, Col 4
-        "targeted" => true,
+        "targeted" => "self",
     ],
     4 => [
         "id" => 4,
@@ -69,10 +69,10 @@ $this->jack_cards = [
         ),
         "modifier" => -2,
         "persistent" => false,
-        "preventable_by" => "boots",
+        "preventable_by" => 18,
         "qty" => 5,
         "sprite_position" => 5, // Row 0, Col 5
-        "targeted" => true,
+        "targeted" => "others",
     ],
     5 => [
         "id" => 5,
@@ -92,7 +92,7 @@ $this->jack_cards = [
         ),
         "qty" => 3,
         "sprite_position" => 10, // Row 1, Col 1
-        "targeted" => true,
+        "targeted" => "others",
     ],
     7 => [
         "id" => 7,
@@ -111,17 +111,17 @@ $this->jack_cards = [
         "tooltip" => clienttranslate("Player's axe in play must be discarded."),
         "qty" => 4,
         "sprite_position" => 13, // Row 1, Col 4
-        "targeted" => true,
+        "targeted" => "others",
     ],
     9 => [
         "id" => 9,
         "type" => "equipment",
-        "subtype" => "protection",
+        "subtype" => "gloves",
         "name" => clienttranslate("Gloves"),
         "tooltip" => clienttranslate("Prevents Blisters and Axe Slip."),
         "qty" => 5,
         "sprite_position" => 14, // Row 1, Col 5
-        "targeted" => true,
+        "targeted" => "self",
     ],
     10 => [
         "id" => 10,
@@ -131,7 +131,7 @@ $this->jack_cards = [
         "tooltip" => clienttranslate("Lets you make a chopping roll."),
         "qty" => 5,
         "sprite_position" => 18, // Row 2, Col 0
-        "targeted" => true,
+        "targeted" => "self",
     ],
     11 => [
         "id" => 11,
@@ -144,7 +144,7 @@ $this->jack_cards = [
         "modifier" => -1,
         "qty" => 5,
         "sprite_position" => 19, // Row 2, Col 1
-        "targeted" => true,
+        "targeted" => "any",
     ],
     12 => [
         "id" => 12,
@@ -154,7 +154,7 @@ $this->jack_cards = [
         "tooltip" => clienttranslate("Lets you make a chopping roll."),
         "qty" => 5,
         "sprite_position" => 20, // Row 2, Col 2
-        "targeted" => true,
+        "targeted" => "self",
     ],
     13 => [
         "id" => 13,
@@ -168,7 +168,7 @@ $this->jack_cards = [
         "unbreakable" => true,
         "qty" => 3,
         "sprite_position" => 21, // Row 2, Col 3
-        "targeted" => true,
+        "targeted" => "self",
     ],
     14 => [
         "id" => 14,
@@ -179,10 +179,10 @@ $this->jack_cards = [
         ),
         "modifier" => -1,
         "persistent" => true,
-        "removable_by" => "gloves",
+        "removable_by" => 9,
         "qty" => 4,
         "sprite_position" => 22, // Row 2, Col 4
-        "targeted" => true,
+        "targeted" => "others",
     ],
     15 => [
         "id" => 15,
@@ -193,7 +193,7 @@ $this->jack_cards = [
         ),
         "qty" => 5,
         "sprite_position" => 23, // Row 2, Col 5
-        "targeted" => true,
+        "targeted" => "others",
     ],
     16 => [
         "id" => 16,
@@ -205,7 +205,7 @@ $this->jack_cards = [
         "qty" => 2,
         "sprite_position" => 27, // Row 3, Col 0
         "blockable_by" => [22],
-        "targeted" => true,
+        "targeted" => "others",
     ],
     17 => [
         "id" => 17,
@@ -216,20 +216,20 @@ $this->jack_cards = [
         ),
         "modifier" => -1,
         "persistent" => false,
-        "preventable_by" => "gloves",
+        "preventable_by" => 9,
         "qty" => 5,
         "sprite_position" => 28, // Row 3, Col 1
-        "targeted" => true,
+        "targeted" => "others",
     ],
     18 => [
         "id" => 18,
         "type" => "equipment",
-        "subtype" => "protection",
+        "subtype" => "boots",
         "name" => clienttranslate("Boots"),
         "tooltip" => clienttranslate("Prevents foot slip."),
         "qty" => 5,
         "sprite_position" => 29, // Row 3, Col 2
-        "targeted" => true,
+        "targeted" => "self",
     ],
     19 => [
         "id" => 19,
@@ -240,7 +240,7 @@ $this->jack_cards = [
         ),
         "qty" => 3,
         "sprite_position" => 30, // Row 3, Col 3
-        "targeted" => true,
+        "targeted" => "others",
     ],
     20 => [
         "id" => 20,
@@ -252,7 +252,7 @@ $this->jack_cards = [
         "qty" => 3,
         "sprite_position" => 31, // Row 3, Col 4
         "blockable_by" => [26],
-        "targeted" => true,
+        "targeted" => "others",
     ],
     21 => [
         "id" => 21,
@@ -262,7 +262,7 @@ $this->jack_cards = [
         "qty" => 4,
         "sprite_position" => 32, // Row 3, Col 5
         "blockable_by" => [26],
-        "targeted" => true,
+        "targeted" => "others",
     ],
     22 => [
         "id" => 22,
@@ -285,7 +285,7 @@ $this->jack_cards = [
         "persistent" => false,
         "qty" => 3,
         "sprite_position" => 37, // Row 4, Col 1
-        "targeted" => true,
+        "targeted" => "self",
     ],
     24 => [
         "id" => 24,
@@ -305,7 +305,7 @@ $this->jack_cards = [
         ),
         "qty" => 1,
         "sprite_position" => 39, // Row 4, Col 3
-        "targeted" => true,
+        "targeted" => "self",
     ],
     26 => [
         "id" => 26,
@@ -341,7 +341,7 @@ $this->jack_cards = [
         "persistent" => false,
         "qty" => 4,
         "sprite_position" => 42, // Row 4, Col 6
-        "targeted" => true,
+        "targeted" => "self",
     ],
 ];
 

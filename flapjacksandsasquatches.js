@@ -68,6 +68,11 @@ define([
         this["scoreCounter_" + player_id] = new ebg.counter();
         this["scoreCounter_" + player_id].create("player_score_" + player_id);
         this["scoreCounter_" + player_id].setValue(player.score);
+
+        // Show skip turn indicator if applicable
+        if (player.skipNextTurn == 1) {
+          this.setSkipTurnIndicator(player_id, true);
+        }
       }
 
       // Setup card stocks
@@ -188,6 +193,7 @@ define([
           var tree = {
             id: activeTree.tree_id,
             card_id: activeTree.card_id,
+            card_type_arg: activeTree.card_type_arg,
             type: activeTree.tree_type,
             chops_required: activeTree.chops_required,
             chops_current: activeTree.chop_count,
@@ -203,6 +209,36 @@ define([
           this.displayEquipment(
             gamedatas.equipment[i].player_id,
             gamedatas.equipment[i],
+          );
+        }
+      }
+
+      // Display help cards for all players
+      if (gamedatas.helpCards) {
+        for (var i in gamedatas.helpCards) {
+          this.displayHelp(
+            gamedatas.helpCards[i].player_id,
+            gamedatas.helpCards[i],
+          );
+        }
+      }
+
+      // Display modifiers for all players
+      if (gamedatas.modifiers) {
+        for (var i in gamedatas.modifiers) {
+          this.displayModifier(
+            gamedatas.modifiers[i].player_id,
+            gamedatas.modifiers[i],
+          );
+        }
+      }
+
+      // Display cut trees for all players
+      if (gamedatas.cutTrees) {
+        for (var i in gamedatas.cutTrees) {
+          this.displayCutTree(
+            gamedatas.cutTrees[i].player_id,
+            gamedatas.cutTrees[i],
           );
         }
       }
@@ -275,16 +311,14 @@ define([
       dojo.empty(treeArea);
 
       // Get tree card definition to find sprite position
-      var treeDef = null;
-      for (var key in this.gamedatas.treeCards) {
-        if (this.gamedatas.treeCards[key].id == tree.id) {
-          treeDef = this.gamedatas.treeCards[key];
-          break;
-        }
-      }
+      var treeDef = tree.card_type_arg
+        ? this.gamedatas.treeCards[tree.card_type_arg]
+        : null;
 
       if (!treeDef) {
-        console.error("Tree definition not found for tree id: " + tree.id);
+        console.error(
+          "Tree definition not found for card_type_arg: " + tree.card_type_arg,
+        );
         return;
       }
 
@@ -333,7 +367,7 @@ define([
         tree.id +
         '">' +
         cardHtml +
-        '<div class="tree_info_overlay">' +
+        '<div class="tree_def_overlay">' +
         '<div class="tree_name">' +
         treeDef.name +
         "</div>" +
@@ -369,14 +403,188 @@ define([
       }
     },
 
+    displayCutTree: function (player_id, cutTree) {
+      var area = $("cut_pile_" + player_id);
+      if (!area) return;
+
+      var treeDef = this.gamedatas.treeCards[cutTree.card_type_arg];
+      if (!treeDef) return;
+
+      var spritePosition = treeDef.sprite_position || 0;
+      var cardsPerRow = 4;
+      var col = spritePosition % cardsPerRow;
+      var row = Math.floor(spritePosition / cardsPerRow);
+      var totalRows = 2;
+
+      var bgPosXPct = cardsPerRow > 1 ? (col * 100) / (cardsPerRow - 1) : 0;
+      var bgPosYPct = totalRows > 1 ? (row * 100) / (totalRows - 1) : 0;
+      var bgSizeWidth = cardsPerRow * this.cardWidth;
+
+      var html =
+        '<div class="play_area_card" id="cut_tree_' +
+        (cutTree.cut_tree_id || cutTree.card_type_arg + "_" + player_id) +
+        '" style="' +
+        "width: " +
+        this.cardWidth +
+        "px; " +
+        "height: " +
+        this.cardHeight +
+        "px; " +
+        "background-image: url(" +
+        g_gamethemeurl +
+        "img/tree_cards.jpg); " +
+        "background-position: " +
+        bgPosXPct +
+        "% " +
+        bgPosYPct +
+        "%; " +
+        "background-size: " +
+        bgSizeWidth +
+        'px auto;">' +
+        '<div class="card_label">' +
+        treeDef.name +
+        " (" +
+        (cutTree.points_value || treeDef.points) +
+        " pts)</div></div>";
+
+      dojo.place(html, area);
+    },
+
+    /**
+     * Create a card element for display in a play area (equipment, help, modifier).
+     * Returns the HTML string for the card.
+     */
+    createPlayAreaCard: function (cardDefId, cardId, label) {
+      var cardDef = this.gamedatas.jackCards[cardDefId];
+      if (!cardDef) return "";
+
+      var spritePosition = cardDef.sprite_position || 0;
+      var cardsPerRow = 9; // red cards sprite sheet
+
+      var col = spritePosition % cardsPerRow;
+      var row = Math.floor(spritePosition / cardsPerRow);
+      var totalRows = 5; // red cards sprite sheet has 5 rows (rows 0-4)
+
+      var bgPosXPct = cardsPerRow > 1 ? (col * 100) / (cardsPerRow - 1) : 0;
+      var bgPosYPct = totalRows > 1 ? (row * 100) / (totalRows - 1) : 0;
+      var bgSizeWidth = cardsPerRow * this.cardWidth;
+
+      return (
+        '<div class="play_area_card" id="play_card_' +
+        cardId +
+        '" style="' +
+        "width: " +
+        this.cardWidth +
+        "px; " +
+        "height: " +
+        this.cardHeight +
+        "px; " +
+        "background-image: url(" +
+        g_gamethemeurl +
+        "img/red_cards.jpg); " +
+        "background-position: " +
+        bgPosXPct +
+        "% " +
+        bgPosYPct +
+        "%; " +
+        "background-size: " +
+        bgSizeWidth +
+        "px auto;" +
+        '">' +
+        '<div class="card_label">' +
+        label +
+        "</div>" +
+        "</div>"
+      );
+    },
+
     displayEquipment: function (player_id, equipment) {
-      // TODO: Display equipment cards in player area
-      console.log("Display equipment for player " + player_id, equipment);
+      var area = $("equipment_area_" + player_id);
+      if (!area) return;
+
+      // Get card definition id from the card table
+      var cardDefId = equipment.card_type_arg;
+      if (!cardDefId) {
+        // If not provided, look it up from gamedatas
+        var card = this.gamedatas.cards
+          ? this.gamedatas.cards[equipment.card_id]
+          : null;
+        if (card) cardDefId = card.type_arg;
+      }
+
+      var cardDef = cardDefId ? this.gamedatas.jackCards[cardDefId] : null;
+      var label = cardDef ? cardDef.name : equipment.equipment_type;
+
+      var html = this.createPlayAreaCard(cardDefId, equipment.card_id, label);
+      if (html) {
+        dojo.place(html, area);
+      }
+    },
+
+    displayHelp: function (player_id, helpCard) {
+      var area = $("help_area_" + player_id);
+      if (!area) return;
+
+      var cardDefId = helpCard.card_type_arg;
+      if (!cardDefId) {
+        var card = this.gamedatas.cards
+          ? this.gamedatas.cards[helpCard.card_id]
+          : null;
+        if (card) cardDefId = card.type_arg;
+      }
+
+      var cardDef = cardDefId ? this.gamedatas.jackCards[cardDefId] : null;
+      var label = cardDef ? cardDef.name : helpCard.help_type;
+
+      var html = this.createPlayAreaCard(cardDefId, helpCard.card_id, label);
+      if (html) {
+        dojo.place(html, area);
+      }
     },
 
     displayModifier: function (player_id, modifier) {
-      // TODO: Display modifier cards in player area
-      console.log("Display modifier for player " + player_id, modifier);
+      var area = $("modifier_area_" + player_id);
+      if (!area) return;
+
+      var cardDefId = modifier.card_type_arg;
+      if (!cardDefId) {
+        var card = this.gamedatas.cards
+          ? this.gamedatas.cards[modifier.card_id]
+          : null;
+        if (card) cardDefId = card.type_arg;
+      }
+
+      var cardDef = cardDefId ? this.gamedatas.jackCards[cardDefId] : null;
+      var label = cardDef
+        ? cardDef.name +
+          " (" +
+          (modifier.modifier_value > 0 ? "+" : "") +
+          modifier.modifier_value +
+          ")"
+        : modifier.modifier_type;
+
+      var html = this.createPlayAreaCard(cardDefId, modifier.card_id, label);
+      if (html) {
+        dojo.place(html, area);
+      }
+    },
+
+    removePlayAreaCard: function (card_id) {
+      var cardEl = $("play_card_" + card_id);
+      if (cardEl) {
+        dojo.destroy(cardEl);
+      }
+    },
+
+    setSkipTurnIndicator: function (player_id, active) {
+      var indicator = $("skip_indicator_" + player_id);
+      if (!indicator) return;
+      if (active) {
+        indicator.innerHTML = _("Skips Next Turn");
+        dojo.addClass(indicator, "active");
+      } else {
+        dojo.removeClass(indicator, "active");
+      }
     },
 
     ///////////////////////////////////////////////////
@@ -397,6 +605,14 @@ define([
         case "reactionWindow":
           this.onEnteringReactionWindow(args.args);
           break;
+
+        case "selectTreesToSwitch":
+          this.onEnteringSelectTreesToSwitch(args.args);
+          break;
+
+        case "choppingRollResult":
+          this.onEnteringChoppingRollResult(args.args);
+          break;
       }
     },
 
@@ -415,25 +631,217 @@ define([
       // Enable player selection for targeting
       this.pendingTarget = true;
 
-      // Make all other players clickable
-      for (var player_id in this.gamedatas.players) {
-        if (player_id != this.player_id) {
-          var playerArea = $("player_" + player_id + "_area");
-          if (playerArea) {
-            dojo.addClass(playerArea, "selectable");
-            this.connect(playerArea, "onclick", "onPlayerSelected");
-          }
+      // Make valid target players clickable (based on targeting mode from server)
+      var validTargets = args.valid_targets || [];
+      for (var i = 0; i < validTargets.length; i++) {
+        var pid = validTargets[i];
+        var playerArea = $("player_" + pid + "_area");
+        if (playerArea) {
+          dojo.addClass(playerArea, "selectable");
+          this.connect(playerArea, "onclick", "onPlayerSelected");
         }
       }
     },
 
+    onEnteringSelectTreesToSwitch: function (args) {
+      if (!this.isCurrentPlayerActive()) return;
+
+      this.switchTagsSelection = { myTreeId: null, targetTreeId: null };
+      var self = this;
+
+      // Make player's cut trees selectable
+      var myTrees = args.my_trees || [];
+      for (var i = 0; i < myTrees.length; i++) {
+        var tree = myTrees[i];
+        var el = $("cut_tree_" + tree.cut_tree_id);
+        if (el) {
+          dojo.addClass(el, "selectable");
+          (function (treeId) {
+            self.connect(el, "onclick", function () {
+              self.onSelectSwitchTree("my", treeId);
+            });
+          })(tree.cut_tree_id);
+        }
+      }
+
+      // Make target's cut trees selectable
+      var targetTrees = args.target_trees || [];
+      for (var i = 0; i < targetTrees.length; i++) {
+        var tree = targetTrees[i];
+        var el = $("cut_tree_" + tree.cut_tree_id);
+        if (el) {
+          dojo.addClass(el, "selectable");
+          (function (treeId) {
+            self.connect(el, "onclick", function () {
+              self.onSelectSwitchTree("target", treeId);
+            });
+          })(tree.cut_tree_id);
+        }
+      }
+    },
+
+    onSelectSwitchTree: function (side, cutTreeId) {
+      if (!this.checkAction("actSelectTreesToSwitch")) return;
+
+      // Deselect previous selection on this side
+      var prevId =
+        side === "my"
+          ? this.switchTagsSelection.myTreeId
+          : this.switchTagsSelection.targetTreeId;
+      if (prevId) {
+        var prevEl = $("cut_tree_" + prevId);
+        if (prevEl) dojo.removeClass(prevEl, "selected");
+      }
+
+      // Select the new tree
+      if (side === "my") {
+        this.switchTagsSelection.myTreeId = cutTreeId;
+      } else {
+        this.switchTagsSelection.targetTreeId = cutTreeId;
+      }
+
+      var el = $("cut_tree_" + cutTreeId);
+      if (el) dojo.addClass(el, "selected");
+
+      // Enable/disable confirm button
+      var btn = $("button_confirm_switch");
+      if (btn) {
+        if (
+          this.switchTagsSelection.myTreeId &&
+          this.switchTagsSelection.targetTreeId
+        ) {
+          dojo.removeClass(btn, "disabled");
+        } else {
+          dojo.addClass(btn, "disabled");
+        }
+      }
+    },
+
+    onConfirmSwitchTags: function () {
+      if (!this.checkAction("actSelectTreesToSwitch")) return;
+
+      if (
+        !this.switchTagsSelection.myTreeId ||
+        !this.switchTagsSelection.targetTreeId
+      ) {
+        this.showMessage(
+          _("You must select one tree from each cut pile"),
+          "error",
+        );
+        return;
+      }
+
+      this.bgaPerformAction("actSelectTreesToSwitch", {
+        my_cut_tree_id: this.switchTagsSelection.myTreeId,
+        target_cut_tree_id: this.switchTagsSelection.targetTreeId,
+      });
+    },
+
     onEnteringReactionWindow: function (args) {
-      if (!this.checkPossibleActions("playReaction")) return;
+      // Show "you" instead of the player's own name when they are the target
+      if (args.target_id == this.player_id) {
+        args.target_desc = _(" on you");
+      }
+
+      if (!this.checkPossibleActions("actPlayReaction")) return;
 
       // Current player can play a reaction or pass
       if (this.playerHand) {
         this.playerHand.setSelectionMode(1);
       }
+    },
+
+    onEnteringChoppingRollResult: function (args) {
+      if (!this.isCurrentPlayerActive()) return;
+
+      var html = '<div class="chop_roll_results">';
+
+      // Dice results
+      var diceResults = args.dice_results || [];
+      if (diceResults.length > 0) {
+        html += "<h3>" + _("Chopping Roll") + "</h3>";
+        html += '<div class="dice_row">';
+        for (var i = 0; i < diceResults.length; i++) {
+          html += this.formatDieResult(diceResults[i]);
+        }
+        html += "</div>";
+      }
+
+      // Apprentice roll
+      if (args.apprentice_die !== null && args.apprentice_die !== undefined) {
+        var apprenticeText = args.apprentice_chop ? _("Chop!") : _("No chop");
+        html +=
+          '<div class="apprentice_row">' +
+          _("Apprentice") +
+          ": " +
+          this.formatDieResult(args.apprentice_die) +
+          " &mdash; " +
+          apprenticeText +
+          "</div>";
+      }
+
+      // Summary
+      html +=
+        '<div class="roll_summary">' +
+        (args.chops || 0) +
+        " " +
+        _("Chop(s)") +
+        ", " +
+        (args.breaks || 0) +
+        " " +
+        _("Break(s)") +
+        ", " +
+        (args.misses || 0) +
+        " " +
+        _("Miss(es)") +
+        "</div>";
+
+      // Warnings
+      if (args.axe_broke) {
+        html += '<div class="roll_warning">' + _("Your axe breaks!") + "</div>";
+      }
+      if (args.long_saw_failed) {
+        html +=
+          '<div class="roll_warning">' +
+          _("Long Saw breaks! It passes to the next player.") +
+          "</div>";
+      }
+
+      // Continue button inside the modal
+      html +=
+        '<div class="chop_roll_continue">' +
+        '<a href="#" id="button_modal_continue" class="bgabutton bgabutton_blue">' +
+        _("Continue") +
+        "</a></div>";
+
+      html += "</div>";
+
+      // Create and show the modal
+      this.chopResultDialog = new ebg.popindialog();
+      this.chopResultDialog.create("chopResultDialog");
+      this.chopResultDialog.setTitle(_("Chopping Roll Results"));
+      this.chopResultDialog.setMaxWidth(400);
+      this.chopResultDialog.setContent(html);
+      this.chopResultDialog.hideCloseIcon();
+      this.chopResultDialog.show();
+
+      // Connect the modal's continue button
+      dojo.connect(
+        $("button_modal_continue"),
+        "onclick",
+        this,
+        "onConfirmChopResult",
+      );
+    },
+
+    formatDieResult: function (value) {
+      var cls = "die_miss";
+      if (value >= 4) {
+        cls = "die_chop";
+      } else if (value <= 2) {
+        cls = "die_break";
+      }
+      return '<span class="die_result ' + cls + '">' + value + "</span>";
     },
 
     onLeavingState: function (stateName) {
@@ -442,6 +850,10 @@ define([
       switch (stateName) {
         case "selectTarget":
           this.onLeavingSelectTarget();
+          break;
+
+        case "selectTreesToSwitch":
+          this.onLeavingSelectTreesToSwitch();
           break;
 
         case "playerTurn":
@@ -464,17 +876,32 @@ define([
       }
     },
 
+    onLeavingSelectTreesToSwitch: function () {
+      // Remove selectable/selected classes from all cut tree elements
+      dojo.query(".play_area_card.selectable").forEach(function (el) {
+        dojo.removeClass(el, "selectable");
+        dojo.removeClass(el, "selected");
+      });
+      this.switchTagsSelection = null;
+    },
+
     onUpdateActionButtons: function (stateName, args) {
       console.log("onUpdateActionButtons: " + stateName);
 
       if (this.isCurrentPlayerActive()) {
         switch (stateName) {
           case "playerTurn":
+            // Play/Discard buttons are added dynamically when a card is selected
+            // in onPlayerHandSelectionChanged
+            break;
+
+          case "selectTreesToSwitch":
             this.addActionButton(
-              "button_discard",
-              _("Discard selected card"),
-              "onDiscardCard",
+              "button_confirm_switch",
+              _("Confirm Switch"),
+              "onConfirmSwitchTags",
             );
+            dojo.addClass("button_confirm_switch", "disabled");
             break;
 
           case "reactionWindow":
@@ -483,6 +910,32 @@ define([
               _("Pass"),
               "onPassReaction",
             );
+            break;
+
+          case "sasquatchSighting":
+            this.addActionButton(
+              "button_roll_save",
+              _("Roll to avoid Sasquatch"),
+              "onRollSave",
+            );
+            break;
+
+          case "choppingRoll":
+            var diceText =
+              _("Roll Dice") +
+              " (" +
+              args.total_dice +
+              " " +
+              (args.total_dice === 1 ? _("die") : _("dice"));
+            if (args.has_apprentice) {
+              diceText += " + " + _("Apprentice");
+            }
+            diceText += ")";
+            this.addActionButton("button_chop_roll", diceText, "onChopRoll");
+            break;
+
+          case "choppingRollResult":
+            // Continue button is inside the modal
             break;
         }
       }
@@ -494,14 +947,45 @@ define([
     onPlayerHandSelectionChanged: function () {
       var items = this.playerHand.getSelectedItems();
 
-      if (items.length > 0) {
-        // A card was selected
+      // Remove any previously added card action buttons
+      dojo.destroy("button_play_card");
+      dojo.destroy("button_discard");
+      dojo.destroy("button_play_reaction");
+
+      if (items.length > 0 && this.checkAction("actPlayCard", true)) {
         var card_id = items[0].id;
 
-        if (this.checkAction("playCard", true)) {
-          // Play the card
-          this.onPlayCard(card_id);
-        }
+        // Show action buttons for the selected card
+        this.addActionButton(
+          "button_play_card",
+          _("Play Card"),
+          function () {
+            this.onPlayCard(card_id);
+          }.bind(this),
+        );
+        this.addActionButton(
+          "button_discard",
+          _("Discard"),
+          function () {
+            this.onDiscardCard(card_id);
+          }.bind(this),
+          null,
+          false,
+          "red",
+        );
+      } else if (
+        items.length > 0 &&
+        this.checkAction("actPlayReaction", true)
+      ) {
+        var card_id = items[0].id;
+
+        this.addActionButton(
+          "button_play_reaction",
+          _("Play Reaction"),
+          function () {
+            this.onPlayReaction(card_id);
+          }.bind(this),
+        );
       }
     },
 
@@ -523,22 +1007,12 @@ define([
       });
     },
 
-    onDiscardCard: function (evt) {
-      console.log("onDiscardCard");
-
-      dojo.stopEvent(evt);
+    onDiscardCard: function (card_id) {
+      console.log("onDiscardCard: " + card_id);
 
       if (!this.checkAction("actDiscardCard")) {
         return;
       }
-
-      var items = this.playerHand.getSelectedItems();
-      if (items.length == 0) {
-        this.showMessage(_("Please select a card to discard"), "error");
-        return;
-      }
-
-      var card_id = items[0].id;
 
       // Deselect the card
       this.playerHand.unselectAll();
@@ -553,7 +1027,7 @@ define([
 
       dojo.stopEvent(evt);
 
-      if (!this.checkAction("selectTarget")) {
+      if (!this.checkAction("actSelectTarget")) {
         return;
       }
 
@@ -567,16 +1041,70 @@ define([
       });
     },
 
+    onPlayReaction: function (card_id) {
+      console.log("onPlayReaction: " + card_id);
+
+      if (!this.checkAction("actPlayReaction")) {
+        return;
+      }
+
+      this.playerHand.unselectAll();
+
+      this.bgaPerformAction("actPlayReaction", {
+        card_id: card_id,
+      });
+    },
+
     onPassReaction: function (evt) {
       console.log("onPassReaction");
 
       dojo.stopEvent(evt);
 
-      if (!this.checkAction("passReaction")) {
+      if (!this.checkAction("actPassReaction")) {
         return;
       }
 
       this.bgaPerformAction("actPassReaction");
+    },
+
+    onRollSave: function (evt) {
+      console.log("onRollSave");
+
+      dojo.stopEvent(evt);
+
+      if (!this.checkAction("actRollSave")) {
+        return;
+      }
+
+      this.bgaPerformAction("actRollSave");
+    },
+
+    onChopRoll: function (evt) {
+      console.log("onChopRoll");
+      dojo.stopEvent(evt);
+
+      if (!this.checkAction("actChopRoll")) {
+        return;
+      }
+
+      this.bgaPerformAction("actChopRoll");
+    },
+
+    onConfirmChopResult: function (evt) {
+      console.log("onConfirmChopResult");
+      if (evt) dojo.stopEvent(evt);
+
+      if (!this.checkAction("actConfirmChopResult")) {
+        return;
+      }
+
+      // Close the modal if it exists
+      if (this.chopResultDialog) {
+        this.chopResultDialog.destroy();
+        this.chopResultDialog = null;
+      }
+
+      this.bgaPerformAction("actConfirmChopResult");
     },
 
     ///////////////////////////////////////////////////
@@ -589,6 +1117,7 @@ define([
       dojo.subscribe("cardPlayed", this, "notif_cardPlayed");
       dojo.subscribe("cardDiscarded", this, "notif_cardDiscarded");
       dojo.subscribe("cardDrawn", this, "notif_cardDrawn");
+      dojo.subscribe("cardReturned", this, "notif_cardReturned");
 
       // Target selection
       dojo.subscribe("targetSelected", this, "notif_targetSelected");
@@ -604,6 +1133,34 @@ define([
 
       // Score update
       dojo.subscribe("scoreUpdate", this, "notif_scoreUpdate");
+
+      // Card effect notifications
+      dojo.subscribe("equipmentPlaced", this, "notif_equipmentPlaced");
+      dojo.subscribe("equipmentDiscarded", this, "notif_equipmentDiscarded");
+      dojo.subscribe("equipmentStolen", this, "notif_equipmentStolen");
+      dojo.subscribe("modifierApplied", this, "notif_modifierApplied");
+      dojo.subscribe("modifierPrevented", this, "notif_modifierPrevented");
+      dojo.subscribe("helpPlaced", this, "notif_helpPlaced");
+      dojo.subscribe("helpDiscarded", this, "notif_helpDiscarded");
+      dojo.subscribe("helpStolen", this, "notif_helpStolen");
+      dojo.subscribe("axeBreakFailed", this, "notif_axeBreakFailed");
+      dojo.subscribe("forestFire", this, "notif_forestFire");
+      dojo.subscribe("switchTags", this, "notif_switchTags");
+      dojo.subscribe("treeHugger", this, "notif_treeHugger");
+      dojo.subscribe("sasquatchMating", this, "notif_sasquatchMating");
+      dojo.subscribe(
+        "sasquatchSightingRoll",
+        this,
+        "notif_sasquatchSightingRoll",
+      );
+
+      // Chopping roll notifications
+      dojo.subscribe("choppingRoll", this, "notif_choppingRoll");
+      dojo.subscribe("choppingSkipped", this, "notif_choppingSkipped");
+      dojo.subscribe("apprenticeRoll", this, "notif_apprenticeRoll");
+      dojo.subscribe("modifierRemoved", this, "notif_modifierRemoved");
+      dojo.subscribe("playerSkipped", this, "notif_playerSkipped");
+      dojo.subscribe("cardBlocked", this, "notif_cardBlocked");
     },
 
     notif_cardPlayed: function (notif) {
@@ -635,6 +1192,24 @@ define([
       }
     },
 
+    notif_cardReturned: function (notif) {
+      console.log("notif_cardReturned", notif);
+
+      // Return the card to the active player's hand
+      if (notif.args.player_id == this.player_id && this.playerHand) {
+        this.addCardToHand({
+          id: notif.args.card_id,
+          type_arg: notif.args.card_type_arg,
+        });
+      }
+
+      this.showMessage(
+        notif.args.card_name +
+          _(" has no valid targets and was returned to hand."),
+        "info",
+      );
+    },
+
     notif_targetSelected: function (notif) {
       console.log("notif_targetSelected", notif);
 
@@ -652,7 +1227,7 @@ define([
       console.log("notif_reactionPlayed", notif);
 
       // Remove card from hand if it belongs to the player viewing this client
-      if (notif.args.player_id == this.getActivePlayerId() && this.playerHand) {
+      if (notif.args.player_id == this.player_id && this.playerHand) {
         this.playerHand.removeFromStockById(notif.args.card_id);
       }
     },
@@ -669,6 +1244,7 @@ define([
       var tree = {
         id: notif.args.tree_id,
         card_id: notif.args.card_id,
+        card_type_arg: notif.args.card_type_arg,
         type: notif.args.tree_type,
         chops_required: notif.args.chops_required,
         chops_current: 0,
@@ -695,6 +1271,15 @@ define([
         dojo.empty(treeArea);
       }
 
+      // Add tree to cut pile
+      if (notif.args.card_type_arg) {
+        this.displayCutTree(notif.args.player_id, {
+          card_type_arg: notif.args.card_type_arg,
+          points_value: notif.args.points,
+          cut_tree_id: notif.args.tree_id,
+        });
+      }
+
       // Update score
       if (this["scoreCounter_" + notif.args.player_id]) {
         this["scoreCounter_" + notif.args.player_id].toValue(
@@ -710,6 +1295,203 @@ define([
       if (this["scoreCounter_" + notif.args.player_id]) {
         this["scoreCounter_" + notif.args.player_id].toValue(notif.args.score);
       }
+    },
+
+    notif_equipmentPlaced: function (notif) {
+      console.log("notif_equipmentPlaced", notif);
+      this.displayEquipment(notif.args.player_id, {
+        card_id: notif.args.card_id,
+        card_type_arg: notif.args.card_type_arg,
+        equipment_type: notif.args.equipment_type,
+      });
+    },
+
+    notif_equipmentDiscarded: function (notif) {
+      console.log("notif_equipmentDiscarded", notif);
+      this.removePlayAreaCard(notif.args.card_id);
+    },
+
+    notif_modifierApplied: function (notif) {
+      console.log("notif_modifierApplied", notif);
+      this.displayModifier(notif.args.player_id, {
+        card_id: notif.args.card_id,
+        card_type_arg: notif.args.card_type_arg,
+        modifier_value: notif.args.modifier_value,
+      });
+    },
+
+    notif_modifierPrevented: function (notif) {
+      console.log("notif_modifierPrevented", notif);
+      // Card was prevented, nothing to display — the log message is sufficient
+    },
+
+    notif_helpPlaced: function (notif) {
+      console.log("notif_helpPlaced", notif);
+      this.displayHelp(notif.args.player_id, {
+        card_id: notif.args.card_id,
+        card_type_arg: notif.args.card_type_arg,
+        help_type: notif.args.help_type,
+      });
+    },
+
+    notif_helpDiscarded: function (notif) {
+      console.log("notif_helpDiscarded", notif);
+      this.removePlayAreaCard(notif.args.card_id);
+    },
+
+    notif_helpStolen: function (notif) {
+      console.log("notif_helpStolen", notif);
+      // Remove from original owner's area, add to receiver's area
+      // Convention: player_id = receiver, target_id = original owner
+      this.removePlayAreaCard(notif.args.card_id);
+      this.displayHelp(notif.args.player_id, {
+        card_id: notif.args.card_id,
+        card_type_arg: notif.args.card_type_arg,
+        help_type: notif.args.help_type,
+      });
+    },
+
+    notif_equipmentStolen: function (notif) {
+      console.log("notif_equipmentStolen", notif);
+      // Remove stolen card from target's area
+      this.removePlayAreaCard(notif.args.card_id);
+      // Remove receiver's old equipment of same type if it was replaced
+      if (notif.args.replaced_card_id) {
+        this.removePlayAreaCard(notif.args.replaced_card_id);
+      }
+      // Add stolen card to receiver's area
+      this.displayEquipment(notif.args.player_id, {
+        card_id: notif.args.card_id,
+        card_type_arg: notif.args.card_type_arg,
+        equipment_type: notif.args.equipment_type,
+      });
+    },
+
+    notif_axeBreakFailed: function (notif) {
+      console.log("notif_axeBreakFailed", notif);
+      // TODO: Show failure message/animation
+    },
+
+    notif_forestFire: function (notif) {
+      console.log("notif_forestFire", notif);
+      // TODO: Remove all trees from active areas
+    },
+
+    notif_switchTags: function (notif) {
+      console.log("notif_switchTags", notif);
+
+      // Remove the swapped cut trees from their original owners
+      if (notif.args.player_tree) {
+        var el = $("cut_tree_" + notif.args.player_tree.cut_tree_id);
+        if (el) dojo.destroy(el);
+      }
+      if (notif.args.target_tree) {
+        var el = $("cut_tree_" + notif.args.target_tree.cut_tree_id);
+        if (el) dojo.destroy(el);
+      }
+
+      // Display player's old tree on target's cut pile
+      if (notif.args.player_tree) {
+        this.displayCutTree(notif.args.target_id, {
+          card_type_arg: notif.args.player_tree.card_type_arg,
+          points_value: notif.args.player_tree.points_value,
+          cut_tree_id: notif.args.player_tree.cut_tree_id,
+        });
+      }
+
+      // Display target's old tree on player's cut pile
+      if (notif.args.target_tree) {
+        this.displayCutTree(notif.args.player_id, {
+          card_type_arg: notif.args.target_tree.card_type_arg,
+          points_value: notif.args.target_tree.points_value,
+          cut_tree_id: notif.args.target_tree.cut_tree_id,
+        });
+      }
+
+      // Update scores
+      if (this["scoreCounter_" + notif.args.player_id]) {
+        this["scoreCounter_" + notif.args.player_id].toValue(
+          notif.args.player_new_score,
+        );
+      }
+      if (this["scoreCounter_" + notif.args.target_id]) {
+        this["scoreCounter_" + notif.args.target_id].toValue(
+          notif.args.target_new_score,
+        );
+      }
+    },
+
+    notif_treeHugger: function (notif) {
+      console.log("notif_treeHugger", notif);
+      this.setSkipTurnIndicator(notif.args.player_id, true);
+    },
+
+    notif_sasquatchMating: function (notif) {
+      console.log("notif_sasquatchMating", notif);
+      this.setSkipTurnIndicator(notif.args.player_id, true);
+
+      // Clear target's tree area
+      var targetTreeArea = $("tree_area_" + notif.args.player_id);
+      if (targetTreeArea) {
+        dojo.empty(targetTreeArea);
+      }
+
+      // Display stolen tree on active player's area
+      if (notif.args.tree) {
+        var tree = {
+          id: notif.args.tree.tree_id,
+          card_id: notif.args.tree.card_id,
+          card_type_arg: notif.args.tree.card_type_arg,
+          type: notif.args.tree.tree_type,
+          chops_required: notif.args.tree.chops_required,
+          chops_current: notif.args.tree.chop_count,
+          points: notif.args.tree.points_value,
+        };
+        this.displayTree(notif.args.active_id, tree);
+      }
+    },
+
+    notif_sasquatchSightingRoll: function (notif) {
+      console.log("notif_sasquatchSightingRoll", notif);
+      // TODO: Show dice roll animation and result
+      if (notif.args.loses_turn) {
+        this.setSkipTurnIndicator(notif.args.player_id, true);
+      }
+    },
+
+    notif_choppingRoll: function (notif) {
+      console.log("notif_choppingRoll", notif);
+      // Update chop progress on the tree
+      this.updateChopProgress(notif.args.player_id, notif.args.new_chop_count);
+    },
+
+    notif_choppingSkipped: function (notif) {
+      console.log("notif_choppingSkipped", notif);
+    },
+
+    notif_apprenticeRoll: function (notif) {
+      console.log("notif_apprenticeRoll", notif);
+      // Update chop progress if the apprentice scored a chop
+      if (notif.args.is_chop) {
+        this.updateChopProgress(
+          notif.args.player_id,
+          notif.args.new_chop_count,
+        );
+      }
+    },
+
+    notif_modifierRemoved: function (notif) {
+      console.log("notif_modifierRemoved", notif);
+      this.removePlayAreaCard(notif.args.card_id);
+    },
+
+    notif_playerSkipped: function (notif) {
+      console.log("notif_playerSkipped", notif);
+      this.setSkipTurnIndicator(notif.args.player_id, false);
+    },
+
+    notif_cardBlocked: function (notif) {
+      console.log("notif_cardBlocked", notif);
     },
   });
 });
