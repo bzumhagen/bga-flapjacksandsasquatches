@@ -609,8 +609,8 @@ define([
     notif_cardPlayed: function (notif) {
       console.log("notif_cardPlayed", notif);
 
-      // Remove card from current player's hand if it's their card
-      if (notif.args.player_id == this.player_id && this.playerHand) {
+      // Remove card from hand if it belongs to the player viewing this client
+      if (notif.args.player_id == this.getActivePlayerId() && this.playerHand) {
         this.playerHand.removeFromStockById(notif.args.card_id);
       }
 
@@ -620,8 +620,8 @@ define([
     notif_cardDiscarded: function (notif) {
       console.log("notif_cardDiscarded", notif);
 
-      // Remove card from current player's hand if it's their card
-      if (notif.args.player_id == this.player_id && this.playerHand) {
+      // Remove card from hand if it belongs to the player viewing this client
+      if (notif.args.player_id == this.getActivePlayerId() && this.playerHand) {
         this.playerHand.removeFromStockById(notif.args.card_id);
       }
     },
@@ -629,8 +629,8 @@ define([
     notif_cardDrawn: function (notif) {
       console.log("notif_cardDrawn", notif);
 
-      // Add card to current player's hand if it's for them
-      if (notif.args.player_id == this.player_id && this.playerHand) {
+      // This is a private notification (notifyPlayer), so it's always for us
+      if (this.playerHand) {
         this.addCardToHand(notif.args.card);
       }
     },
@@ -651,8 +651,8 @@ define([
     notif_reactionPlayed: function (notif) {
       console.log("notif_reactionPlayed", notif);
 
-      // Remove card from hand if it's the current player
-      if (notif.args.player_id == this.player_id && this.playerHand) {
+      // Remove card from hand if it belongs to the player viewing this client
+      if (notif.args.player_id == this.getActivePlayerId() && this.playerHand) {
         this.playerHand.removeFromStockById(notif.args.card_id);
       }
     },

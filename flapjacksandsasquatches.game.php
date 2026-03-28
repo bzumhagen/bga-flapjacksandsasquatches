@@ -640,6 +640,7 @@ class FlapjacksAndSasquatches extends Table
 
             // Notify player privately (send Deck card so JS gets id, type, type_arg)
             self::notifyPlayer($player_id, "cardDrawn", "", [
+                "player_id" => $player_id,
                 "card" => $card,
             ]);
 
