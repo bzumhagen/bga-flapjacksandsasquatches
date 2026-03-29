@@ -172,6 +172,7 @@ $machinestates = [
         "action" => "stResolveCard",
         "transitions" => [
             "sasquatchSighting" => 41,
+            "chooseTakeTree" => 43,
             "contest" => 42,
             "selectTreesToSwitch" => 35,
             "next" => 50,
@@ -190,6 +191,21 @@ $machinestates = [
         "type" => "multipleactiveplayer",
         "action" => "stSasquatchSighting",
         "possibleactions" => ["actRollSave"],
+        "transitions" => ["next" => 50],
+    ],
+
+    // Sasquatch Mating Season - active player chooses whether to take target's tree
+    43 => [
+        "name" => "chooseTakeTree",
+        "description" => clienttranslate(
+            '${actplayer} may take ${target_name}\'s tree',
+        ),
+        "descriptionmyturn" => clienttranslate(
+            '${you} may take ${target_name}\'s tree',
+        ),
+        "type" => "activeplayer",
+        "args" => "argChooseTakeTree",
+        "possibleactions" => ["actChooseTakeTree"],
         "transitions" => ["next" => 50],
     ],
 

@@ -60,13 +60,104 @@ define([
       // Store game data
       this.gamedatas = gamedatas;
 
+      // Define Javascript HTML templates (migrated from .tpl)
+      var jstpl_card =
+        '<div class="card" id="card_${id}" style="background-position:-${x}px -${y}px"></div>';
+      var jstpl_chop_token =
+        '<div class="chop_token" id="chop_token_${player_id}_${number}"></div>';
+      var jstpl_tree =
+        '<div class="tree_card" id="tree_${player_id}" data-tree-id="${tree_id}">\
+        <div class="tree_name">${tree_name}</div>\
+        <div class="tree_progress">\
+            <span class="chops_current" id="chops_current_${player_id}">0</span> / \
+            <span class="chops_required">${chops_required}</span>\
+        </div>\
+        <div class="tree_points">Worth: ${points} points</div>\
+        <div class="chop_markers" id="chop_markers_${player_id}"></div>\
+    </div>';
+
+      // Build main game area HTML (migrated from .tpl and .view.php)
+      var playerAreasHtml = "";
+      var directions = ["S", "W", "N", "E", "S2", "W2", "N2", "E2"]; // Support up to 8 players
+      for (var player_id in gamedatas.players) {
+        var player = gamedatas.players[player_id];
+        var dir = directions.shift();
+        playerAreasHtml +=
+          '<div id="player_' +
+          player_id +
+          '_area" class="player_area whiteblock playertable_' +
+          dir +
+          '">\
+            <div class="playertablename" style="color:#' +
+          player.color +
+          '">\
+                ' +
+          player.name +
+          '\
+                <span id="skip_indicator_' +
+          player_id +
+          '" class="skip_turn_indicator"></span>\
+            </div>\
+            <div class="player_hand" id="player_hand_' +
+          player_id +
+          '">\
+                <!-- Player hand will be populated by JavaScript -->\
+            </div>\
+            <div class="player_play_area">\
+                <div class="tree_area" id="tree_area_' +
+          player_id +
+          '"></div>\
+                <div class="equipment_area" id="equipment_area_' +
+          player_id +
+          '"></div>\
+                <div class="help_area" id="help_area_' +
+          player_id +
+          '"></div>\
+                <div class="modifier_area" id="modifier_area_' +
+          player_id +
+          '"></div>\
+                <div class="cut_pile" id="cut_pile_' +
+          player_id +
+          '"></div>\
+            </div>\
+        </div>';
+      }
+
+      var html =
+        '<div id="flapjacksandsasquatches_game_area">\
+        <div id="center_area" class="whiteblock">\
+            <div id="tree_deck" class="deck"></div>\
+            <div id="jack_deck" class="deck"></div>\
+            <div id="discard_pile" class="deck"></div>\
+        </div>\
+        <div id="player_areas">' +
+        playerAreasHtml +
+        '</div>\
+        <div id="myhand_wrap" class="whiteblock">\
+            <h3>' +
+        _("My hand") +
+        '</h3>\
+            <div id="myhand"></div>\
+        </div>\
+      </div>';
+
+      this.bga.gameArea.getElement().insertAdjacentHTML("beforeend", html);
+
       // Setup player boards
       for (var player_id in gamedatas.players) {
         var player = gamedatas.players[player_id];
+        var playerPanel = this.bga.playerPanels.getElement(player_id);
 
         // Setup score counter for this player
         this["scoreCounter_" + player_id] = new ebg.counter();
-        this["scoreCounter_" + player_id].create("player_score_" + player_id);
+        if (playerPanel) {
+          this["scoreCounter_" + player_id].create(
+            playerPanel.querySelector(".player_score") ||
+              "player_score_" + player_id,
+          );
+        } else {
+          this["scoreCounter_" + player_id].create("player_score_" + player_id);
+        }
         this["scoreCounter_" + player_id].setValue(player.score);
 
         // Show skip turn indicator if applicable
@@ -578,6 +669,7 @@ define([
 
     setSkipTurnIndicator: function (player_id, active) {
       var indicator = $("skip_indicator_" + player_id);
+
       if (!indicator) return;
       if (active) {
         indicator.innerHTML = _("Skips Next Turn");
@@ -912,6 +1004,22 @@ define([
             );
             break;
 
+          case "chooseTakeTree":
+            this.addActionButton(
+              "button_take_tree",
+              _("Take Tree"),
+              "onTakeTree",
+            );
+            this.addActionButton(
+              "button_decline_tree",
+              _("No Thanks"),
+              "onDeclineTree",
+              null,
+              false,
+              "red",
+            );
+            break;
+
           case "sasquatchSighting":
             this.addActionButton(
               "button_roll_save",
@@ -1067,6 +1175,28 @@ define([
       this.bgaPerformAction("actPassReaction");
     },
 
+    onTakeTree: function (evt) {
+      console.log("onTakeTree");
+      dojo.stopEvent(evt);
+
+      if (!this.checkAction("actChooseTakeTree")) {
+        return;
+      }
+
+      this.bgaPerformAction("actChooseTakeTree", { take_tree: true });
+    },
+
+    onDeclineTree: function (evt) {
+      console.log("onDeclineTree");
+      dojo.stopEvent(evt);
+
+      if (!this.checkAction("actChooseTakeTree")) {
+        return;
+      }
+
+      this.bgaPerformAction("actChooseTakeTree", { take_tree: false });
+    },
+
     onRollSave: function (evt) {
       console.log("onRollSave");
 
@@ -1148,6 +1278,8 @@ define([
       dojo.subscribe("switchTags", this, "notif_switchTags");
       dojo.subscribe("treeHugger", this, "notif_treeHugger");
       dojo.subscribe("sasquatchMating", this, "notif_sasquatchMating");
+      dojo.subscribe("treeTaken", this, "notif_treeTaken");
+      dojo.subscribe("treeTakeDeclined", this, "notif_treeTakeDeclined");
       dojo.subscribe(
         "sasquatchSightingRoll",
         this,
@@ -1327,6 +1459,9 @@ define([
 
     notif_helpPlaced: function (notif) {
       console.log("notif_helpPlaced", notif);
+      if (notif.args.replaced_card_id) {
+        this.removePlayAreaCard(notif.args.replaced_card_id);
+      }
       this.displayHelp(notif.args.player_id, {
         card_id: notif.args.card_id,
         card_type_arg: notif.args.card_type_arg,
@@ -1344,6 +1479,10 @@ define([
       // Remove from original owner's area, add to receiver's area
       // Convention: player_id = receiver, target_id = original owner
       this.removePlayAreaCard(notif.args.card_id);
+      // Remove receiver's old help of same type if it was replaced
+      if (notif.args.replaced_card_id) {
+        this.removePlayAreaCard(notif.args.replaced_card_id);
+      }
       this.displayHelp(notif.args.player_id, {
         card_id: notif.args.card_id,
         card_type_arg: notif.args.card_type_arg,
@@ -1374,7 +1513,13 @@ define([
 
     notif_forestFire: function (notif) {
       console.log("notif_forestFire", notif);
-      // TODO: Remove all trees from active areas
+      var players = notif.args.affected_players || [];
+      for (var i = 0; i < players.length; i++) {
+        var treeArea = $("tree_area_" + players[i]);
+        if (treeArea) {
+          dojo.empty(treeArea);
+        }
+      }
     },
 
     notif_switchTags: function (notif) {
@@ -1429,6 +1574,10 @@ define([
     notif_sasquatchMating: function (notif) {
       console.log("notif_sasquatchMating", notif);
       this.setSkipTurnIndicator(notif.args.player_id, true);
+    },
+
+    notif_treeTaken: function (notif) {
+      console.log("notif_treeTaken", notif);
 
       // Clear target's tree area
       var targetTreeArea = $("tree_area_" + notif.args.player_id);
@@ -1449,6 +1598,10 @@ define([
         };
         this.displayTree(notif.args.active_id, tree);
       }
+    },
+
+    notif_treeTakeDeclined: function (notif) {
+      console.log("notif_treeTakeDeclined", notif);
     },
 
     notif_sasquatchSightingRoll: function (notif) {

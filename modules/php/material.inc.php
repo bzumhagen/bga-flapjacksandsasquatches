@@ -328,6 +328,7 @@ $this->jack_cards = [
         ),
         "qty" => 2,
         "sprite_position" => 41, // Row 4, Col 5
+        "blockable_by" => [22],
         "targeted" => false,
     ],
     28 => [
