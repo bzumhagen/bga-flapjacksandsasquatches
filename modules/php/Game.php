@@ -1422,12 +1422,18 @@ class Game extends \Bga\GameFramework\Table
                 $tree["player_id"],
             );
 
+            $tree_def = $this->getCardDefinitionForCardId($tree["card_id"]);
+
+            $cut_tree_id = self::DbGetLastId();
+
             $this->bga->playerScore->inc(
                 $tree["player_id"],
                 $tree["points_value"],
             );
-
-            $tree_def = $this->getCardDefinitionForCardId($tree["card_id"]);
+            $new_score = self::getUniqueValueFromDB(
+                "SELECT player_score FROM player WHERE player_id = " .
+                    $tree["player_id"],
+            );
 
             self::notifyAllPlayers(
                 "treeCompleted",
@@ -1441,7 +1447,8 @@ class Game extends \Bga\GameFramework\Table
                     ),
                     "tree_name" => $tree_def["name"],
                     "points" => $tree["points_value"],
-                    "card_type_arg" => $card_type_arg,
+                    "card_type_arg" => $tree_def["id"],
+                    "tree_id" => $cut_tree_id,
                     "new_score" => $new_score,
                 ],
             );
