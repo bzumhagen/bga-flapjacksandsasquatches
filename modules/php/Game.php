@@ -165,11 +165,29 @@ class Game extends \Bga\GameFramework\Table
         );
 
         // Get deck counts
-        $result["deckCount"] = $this->cards->countCardInLocation("deck");
+        $result["jackDeckCount"] = $this->cards->countCardInLocation("deck");
         $result["treeDeckCount"] = $this->cards->countCardInLocation(
             "treedeck",
         );
         $result["discardCount"] = $this->cards->countCardInLocation("discard");
+
+        // Get top discard card for display
+        $discard_cards = $this->cards->getCardsInLocation("discard");
+        if (!empty($discard_cards)) {
+            // Find the card with the highest location_arg (most recently discarded)
+            $top = null;
+            foreach ($discard_cards as $dc) {
+                if (
+                    $top === null ||
+                    $dc["location_arg"] > $top["location_arg"]
+                ) {
+                    $top = $dc;
+                }
+            }
+            $result["topDiscard"] = $top;
+        } else {
+            $result["topDiscard"] = null;
+        }
 
         // Get all players' equipment (visible to all)
         $sql = "SELECT pe.player_id, pe.card_id, pe.equipment_type, c.card_type_arg
@@ -369,6 +387,7 @@ class Game extends \Bga\GameFramework\Table
                 "card_name" => $card_def["name"],
                 "card_id" => $card_id,
                 "card_type" => $card_def["type"],
+                "card_type_arg" => $card_def["id"],
             ],
         );
 
@@ -459,6 +478,7 @@ class Game extends \Bga\GameFramework\Table
                 "player_id" => $player_id,
                 "player_name" => self::getActivePlayerName(),
                 "card_id" => $card_id,
+                "card_type_arg" => $card["type_arg"],
             ],
         );
 
@@ -1184,6 +1204,7 @@ class Game extends \Bga\GameFramework\Table
                     "player_name" => self::getPlayerNameById($target_id),
                     "card_name" => $old_card_def["name"],
                     "card_id" => $existing["card_id"],
+                    "card_type_arg" => $old_card_def["id"],
                 ],
             );
         }
@@ -1506,6 +1527,7 @@ class Game extends \Bga\GameFramework\Table
                     "player_name" => self::getPlayerNameById($target_id),
                     "card_name" => $axe_card_def["name"],
                     "card_id" => $axe["card_id"],
+                    "card_type_arg" => $axe_card_def["id"],
                 ],
             );
         }
@@ -1875,6 +1897,7 @@ class Game extends \Bga\GameFramework\Table
                     ),
                     "card_name" => $help_card_def["name"],
                     "card_id" => $help["card_id"],
+                    "card_type_arg" => $help_card_def["id"],
                 ],
             );
         }
@@ -1911,6 +1934,7 @@ class Game extends \Bga\GameFramework\Table
                     ),
                     "card_name" => $equip_card_def["name"],
                     "card_id" => $equip["card_id"],
+                    "card_type_arg" => $equip_card_def["id"],
                 ],
             );
         }
@@ -2399,6 +2423,7 @@ class Game extends \Bga\GameFramework\Table
                     "player_id" => $player_id,
                     "player_name" => $player_name,
                     "card_id" => $axe["card_id"],
+                    "card_type_arg" => $axe_def["id"],
                 ],
             );
         }
@@ -2451,6 +2476,7 @@ class Game extends \Bga\GameFramework\Table
                         "player_id" => $player_id,
                         "player_name" => $player_name,
                         "card_id" => $long_saw["card_id"],
+                        "card_type_arg" => 25,
                     ],
                 );
             }
@@ -2502,6 +2528,7 @@ class Game extends \Bga\GameFramework\Table
                     "player_name" => $player_name,
                     "card_name" => $card_def["name"],
                     "card_id" => $mod["card_id"],
+                    "card_type_arg" => $card_def["id"],
                 ],
             );
         }

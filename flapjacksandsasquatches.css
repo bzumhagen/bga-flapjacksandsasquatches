@@ -76,11 +76,11 @@
     text-align: center;
     padding: 20px;
     margin: 20px auto;
-    max-width: 400px;
     display: flex;
     gap: 20px;
     justify-content: center;
     align-items: center;
+    flex-wrap: wrap;
 }
 
 /* Decks */
@@ -311,42 +311,45 @@
     flex: 1;
 }
 
-/* Cards displayed in play areas */
-.play_area_card {
-    display: inline-block;
-    margin: 2px;
-    border-radius: 3px;
-    background-size: auto;
-    position: relative;
+/* bga-cards: jack card front/back */
+.fj-jack-card-front,
+.fj-jack-card-back {
+    background-repeat: no-repeat;
+    border-radius: 5px;
 }
 
-.play_area_card.selectable {
+/* bga-cards: tree card front/back */
+.fj-tree-card-front,
+.fj-tree-card-back {
+    background-repeat: no-repeat;
+    border-radius: 5px;
+}
+
+/* bga-cards selectable/selected states */
+.fj-jack-card.selectable,
+.fj-tree-card.selectable {
     cursor: pointer;
     outline: 2px solid #ff6600;
     box-shadow: 0 0 10px rgba(255, 102, 0, 0.5);
 }
 
-.play_area_card.selectable:hover {
+.fj-jack-card.selectable:hover,
+.fj-tree-card.selectable:hover {
     transform: scale(1.05);
     transition: all 0.2s;
 }
 
-.play_area_card.selected {
+.fj-jack-card.selected,
+.fj-tree-card.selected {
     outline: 3px solid #ff6600;
     box-shadow: 0 0 15px rgba(255, 102, 0, 0.8);
 }
 
-.play_area_card .card_label {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: rgba(0, 0, 0, 0.6);
-    color: white;
-    font-size: 8px;
-    text-align: center;
-    padding: 2px;
-    border-radius: 0 0 3px 3px;
+/* Selected card in hand: bring to front and enlarge */
+#myhand .bga-cards_card:has(.bga-cards_selected-card) {
+    z-index: 50;
+    transform: scale(1.3);
+    transition: transform 0.2s ease;
 }
 
 /* Current player's hand */
@@ -387,12 +390,6 @@
     transform: translateY(-10px);
     box-shadow: 0 8px 15px rgba(0, 0, 0, 0.3);
     z-index: 10;
-}
-
-.stockitem.selected {
-    border-color: #ff6600;
-    box-shadow: 0 0 10px rgba(255, 102, 0, 0.8);
-    transform: translateY(-5px);
 }
 
 /* Tree card display */
@@ -454,21 +451,13 @@
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
-/* Stock item positioning */
-.stockitem {
-    display: inline-block;
-    margin: 5px;
-    background-size: 1080px auto !important; /* 9 cards x 120px = 1080px width */
-}
-
-#myhand .stockitem {
-    background-size: 1080px auto !important; /* Scale red_cards.jpg: 9 cards x 120px = 1080px width */
-}
-
-/* Chopping roll results modal */
+/* Chopping roll results */
 .chop_roll_results {
     text-align: center;
-    padding: 10px;
+    padding: 10px 20px;
+    border-left: 2px solid #ccc;
+    z-index: 100;
+    position: relative;
 }
 
 .chop_roll_results h3 {
@@ -485,42 +474,51 @@
     flex-wrap: wrap;
 }
 
-.die_result {
-    display: inline-flex;
+/* bga-dice: flapjacks-die styling */
+.flapjacks-die {
+    box-shadow: 1px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* All die faces: shared styling */
+.flapjacks-die .bga-dice_die-face {
+    display: flex;
     align-items: center;
     justify-content: center;
-    width: 44px;
-    height: 44px;
-    border-radius: 6px;
-    font-size: 22px;
+    font-size: 24px;
     font-weight: bold;
     color: white;
     border: 2px solid rgba(0, 0, 0, 0.2);
 }
 
-.die_chop {
-    background: #2e7d32;
-}
-
-.die_break {
+/* Face 1-2: Break (red) */
+.flapjacks-die-face-1,
+.flapjacks-die-face-2 {
     background: #c62828;
 }
 
-.die_miss {
+/* Face 3: Miss (gray) */
+.flapjacks-die-face-3 {
     background: #757575;
 }
 
+/* Face 4-6: Chop (green) */
+.flapjacks-die-face-4,
+.flapjacks-die-face-5,
+.flapjacks-die-face-6 {
+    background: #2e7d32;
+}
+
 .apprentice_row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
     margin: 12px 0;
     font-size: 14px;
     color: #555;
 }
 
-.apprentice_row .die_result {
-    width: 36px;
-    height: 36px;
-    font-size: 18px;
-    vertical-align: middle;
+.apprentice_label {
+    font-weight: bold;
 }
 
 .roll_summary {

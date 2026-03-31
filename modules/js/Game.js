@@ -12,7 +12,10 @@
  * FlapjacksAndSasquatches user interface script (modern ESM pattern)
  */
 
-const [Counter, Stock] = await importDojoLibs(["ebg/counter", "ebg/stock"]);
+const [Counter] = await importDojoLibs(["ebg/counter"]);
+const BgaAnimations = await importEsmLib("bga-animations", "1.x");
+const BgaCards = await importEsmLib("bga-cards", "1.x");
+const BgaDice = await importEsmLib("bga-dice", "1.x");
 
 export class Game {
   constructor(bga) {
@@ -29,9 +32,21 @@ export class Game {
     this.equipmentStocks = {};
     this.modifierStocks = {};
     this.helpStocks = {};
+    this.cutPileStocks = {};
 
     // Track current game state
     this.pendingTarget = null;
+
+    // Animation manager
+    this.animationManager = new BgaAnimations.Manager({
+      animationsActive: () => this.bga.gameui.bgaAnimationsActive(),
+    });
+
+    // Dice manager
+    this.diceManager = new BgaDice.Manager({
+      animationManager: this.animationManager,
+      type: "flapjacks-die",
+    });
   }
 
   setup(gamedatas) {
@@ -40,6 +55,66 @@ export class Game {
 
     // Store game data
     this.gamedatas = gamedatas;
+
+    // Create card managers (needs gamedatas for sprite lookups)
+    this.jackCardManager = new BgaCards.Manager({
+      animationManager: this.animationManager,
+      type: "fj-jack-card",
+      cardWidth: this.cardWidth,
+      cardHeight: this.cardHeight,
+      getId: (card) => card.id,
+      isCardVisible: (card) => !!card.card_type_arg,
+      setupDiv: (card, div) => {
+        div.classList.add("fj-jack-card");
+      },
+      setupFrontDiv: (card, div) => {
+        var cardDef = this.gamedatas.jackCards[card.card_type_arg];
+        if (!cardDef) return;
+        var pos = cardDef.sprite_position || 0;
+        var col = pos % 9;
+        var row = Math.floor(pos / 9);
+        div.style.backgroundImage =
+          "url(" + g_gamethemeurl + "img/red_cards.jpg)";
+        div.style.backgroundPosition =
+          (col * 100) / 8 + "% " + (row * 100) / 4 + "%";
+        div.style.backgroundSize = 9 * this.cardWidth + "px auto";
+      },
+      setupBackDiv: (card, div) => {
+        div.style.backgroundImage =
+          "url(" + g_gamethemeurl + "img/red_cards.jpg)";
+        div.style.backgroundPosition = "100% 0%";
+        div.style.backgroundSize = 9 * this.cardWidth + "px auto";
+      },
+    });
+
+    this.treeCardManager = new BgaCards.Manager({
+      animationManager: this.animationManager,
+      type: "fj-tree-card",
+      cardWidth: this.cardWidth,
+      cardHeight: this.cardHeight,
+      getId: (card) => card.id,
+      isCardVisible: (card) => !!card.card_type_arg,
+      setupDiv: (card, div) => {
+        div.classList.add("fj-tree-card");
+      },
+      setupFrontDiv: (card, div) => {
+        var treeDef = this.gamedatas.treeCards[card.card_type_arg];
+        if (!treeDef) return;
+        var pos = treeDef.sprite_position || 0;
+        var col = pos % 4;
+        var row = Math.floor(pos / 4);
+        div.style.backgroundImage =
+          "url(" + g_gamethemeurl + "img/tree_cards.jpg)";
+        div.style.backgroundPosition = (col * 100) / 3 + "% " + row * 100 + "%";
+        div.style.backgroundSize = 4 * this.cardWidth + "px auto";
+      },
+      setupBackDiv: (card, div) => {
+        div.style.backgroundImage =
+          "url(" + g_gamethemeurl + "img/tree_cards.jpg)";
+        div.style.backgroundPosition = "100% 100%";
+        div.style.backgroundSize = 4 * this.cardWidth + "px auto";
+      },
+    });
 
     // Build main game area HTML
     var playerAreasHtml = "";
@@ -101,7 +176,7 @@ export class Game {
 
     this.bga.gameArea.getElement().insertAdjacentHTML("beforeend", html);
 
-    // Setup player boards
+    // Setup player boards and per-player stocks
     for (var player_id in gamedatas.players) {
       var player = gamedatas.players[player_id];
 
@@ -114,13 +189,74 @@ export class Game {
       if (player.skipNextTurn == 1) {
         this.setSkipTurnIndicator(player_id, true);
       }
+
+      // Create per-player card stocks
+      this.equipmentStocks[player_id] = new BgaCards.LineStock(
+        this.jackCardManager,
+        $("equipment_area_" + player_id),
+      );
+      this.helpStocks[player_id] = new BgaCards.LineStock(
+        this.jackCardManager,
+        $("help_area_" + player_id),
+      );
+      this.modifierStocks[player_id] = new BgaCards.LineStock(
+        this.jackCardManager,
+        $("modifier_area_" + player_id),
+      );
+      this.cutPileStocks[player_id] = new BgaCards.LineStock(
+        this.treeCardManager,
+        $("cut_pile_" + player_id),
+      );
     }
 
-    // Setup card stocks
-    this.setupStocks();
+    // Setup player hand
+    this.playerHand = new BgaCards.HandStock(
+      this.jackCardManager,
+      $("myhand"),
+      {
+        sort: (a, b) => {
+          var typeWeights = {
+            equipment: 100,
+            plus_minus: 200,
+            help: 300,
+            action: 400,
+            sasquatch: 500,
+            reaction: 600,
+          };
+          var defA = this.gamedatas.jackCards[a.card_type_arg];
+          var defB = this.gamedatas.jackCards[b.card_type_arg];
+          var wA =
+            (defA ? typeWeights[defA.type] || 0 : 0) + Number(a.card_type_arg);
+          var wB =
+            (defB ? typeWeights[defB.type] || 0 : 0) + Number(b.card_type_arg);
+          return wA - wB;
+        },
+      },
+    );
+    this.playerHand.onSelectionChange = () => {
+      this.onPlayerHandSelectionChanged();
+    };
 
-    // Setup deck displays
-    this.setupDecks();
+    // Setup deck components
+    this.jackDeck = new BgaCards.Deck(this.jackCardManager, $("jack_deck"), {
+      cardNumber: gamedatas.jackDeckCount || 0,
+    });
+    this.treeDeck = new BgaCards.Deck(this.treeCardManager, $("tree_deck"), {
+      cardNumber: gamedatas.treeDeckCount || 0,
+    });
+    this.discardPile = new BgaCards.Deck(
+      this.jackCardManager,
+      $("discard_pile"),
+      { cardNumber: gamedatas.discardCount || 0 },
+    );
+
+    // Show top discard card if available
+    if (gamedatas.topDiscard) {
+      this.discardPile.addCard({
+        id: gamedatas.topDiscard.id,
+        card_type_arg: gamedatas.topDiscard.type_arg,
+      });
+    }
 
     // Display initial game state
     this.updateDisplay(gamedatas);
@@ -131,76 +267,14 @@ export class Game {
     console.log("Ending game setup");
   }
 
-  setupStocks() {
-    // Setup current player's hand
-    this.playerHand = new Stock();
-    this.playerHand.create(
-      this.bga.gameui,
-      $("myhand"),
-      this.cardWidth,
-      this.cardHeight,
-    );
-
-    this.playerHand.image_items_per_row = 9;
-    this.playerHand.setSelectionMode(1);
-    this.playerHand.setSelectionAppearance("class");
-
-    this.playerHand.onChangeSelection = () => {
-      this.onPlayerHandSelectionChanged();
-    };
-  }
-
-  setupDecks() {
-    // Setup Jack Deck (red cards) card back
-    var redBack = this.gamedatas.cardBacks.red_card_back;
-    var redCardsPerRow = redBack.cards_per_row;
-    var redSpritePosition = redBack.sprite_position;
-
-    var redCol = redSpritePosition % redCardsPerRow;
-    var redRow = Math.floor(redSpritePosition / redCardsPerRow);
-
-    var redBgPosXPct = (redCol * 100) / (redCardsPerRow - 1);
-    var redBgPosYPct = redRow * 100;
-
-    var redBgSizeWidth = redCardsPerRow * this.cardWidth;
-
-    var jackDeck = $("jack_deck");
-    if (jackDeck) {
-      jackDeck.style.backgroundImage =
-        "url(" + g_gamethemeurl + "img/" + redBack.sprite + ")";
-      jackDeck.style.backgroundPosition =
-        redBgPosXPct + "% " + redBgPosYPct + "%";
-      jackDeck.style.backgroundSize = redBgSizeWidth + "px auto";
-    }
-
-    // Setup Tree Deck card back
-    var treeBack = this.gamedatas.cardBacks.tree_card_back;
-    var treeCardsPerRow = treeBack.cards_per_row;
-    var treeSpritePosition = treeBack.sprite_position;
-
-    var treeCol = treeSpritePosition % treeCardsPerRow;
-    var treeRow = Math.floor(treeSpritePosition / treeCardsPerRow);
-
-    var treeBgPosXPct = (treeCol * 100) / (treeCardsPerRow - 1);
-    var treeBgPosYPct = treeRow * 100;
-
-    var treeBgSizeWidth = treeCardsPerRow * this.cardWidth;
-
-    var treeDeck = $("tree_deck");
-    if (treeDeck) {
-      treeDeck.style.backgroundImage =
-        "url(" + g_gamethemeurl + "img/" + treeBack.sprite + ")";
-      treeDeck.style.backgroundPosition =
-        treeBgPosXPct + "% " + treeBgPosYPct + "%";
-      treeDeck.style.backgroundSize = treeBgSizeWidth + "px auto";
-    }
-  }
-
   updateDisplay(gamedatas) {
     if (gamedatas.hand) {
       for (var i in gamedatas.hand) {
         var card = gamedatas.hand[i];
-        this.addCardToHand(card);
+        this.playerHand.addCard({
+          id: card.id,
+          card_type_arg: card.type_arg,
+        });
       }
     }
 
@@ -222,83 +296,41 @@ export class Game {
 
     if (gamedatas.equipment) {
       for (var i in gamedatas.equipment) {
-        this.displayEquipment(
-          gamedatas.equipment[i].player_id,
-          gamedatas.equipment[i],
-        );
+        var eq = gamedatas.equipment[i];
+        this.equipmentStocks[eq.player_id].addCard({
+          id: eq.card_id,
+          card_type_arg: eq.card_type_arg,
+        });
       }
     }
 
     if (gamedatas.helpCards) {
       for (var i in gamedatas.helpCards) {
-        this.displayHelp(
-          gamedatas.helpCards[i].player_id,
-          gamedatas.helpCards[i],
-        );
+        var h = gamedatas.helpCards[i];
+        this.helpStocks[h.player_id].addCard({
+          id: h.card_id,
+          card_type_arg: h.card_type_arg,
+        });
       }
     }
 
     if (gamedatas.modifiers) {
       for (var i in gamedatas.modifiers) {
-        this.displayModifier(
-          gamedatas.modifiers[i].player_id,
-          gamedatas.modifiers[i],
-        );
+        var m = gamedatas.modifiers[i];
+        this.modifierStocks[m.player_id].addCard({
+          id: m.card_id,
+          card_type_arg: m.card_type_arg,
+        });
       }
     }
 
     if (gamedatas.cutTrees) {
       for (var i in gamedatas.cutTrees) {
-        this.displayCutTree(
-          gamedatas.cutTrees[i].player_id,
-          gamedatas.cutTrees[i],
-        );
-      }
-    }
-  }
-
-  addCardToHand(card) {
-    if (!this.playerHand) return;
-
-    var cardDefId = card.type_arg;
-    var cardId = card.id;
-
-    if (!this.playerHand.item_type[cardDefId]) {
-      var spriteUrl = g_gamethemeurl + "img/red_cards.jpg";
-
-      var cardDef = this.gamedatas.jackCards[cardDefId];
-      var spritePosition = cardDef ? cardDef.sprite_position || 0 : 0;
-
-      var typeWeights = {
-        equipment: 100,
-        plus_minus: 200,
-        help: 300,
-        action: 400,
-        sasquatch: 500,
-        reaction: 600,
-      };
-      var weight = (cardDef ? typeWeights[cardDef.type] || 0 : 0) + cardDefId;
-
-      this.playerHand.addItemType(cardDefId, weight, spriteUrl, spritePosition);
-    }
-
-    this.playerHand.addToStockWithId(cardDefId, cardId);
-  }
-
-  updatePlayerState(player_id, state) {
-    if (state.tree) {
-      this.displayTree(player_id, state.tree);
-    }
-
-    if (state.equipment) {
-      for (var i in state.equipment) {
-        this.displayEquipment(player_id, state.equipment[i]);
-      }
-    }
-
-    if (state.modifiers) {
-      for (var i in state.modifiers) {
-        this.displayModifier(player_id, state.modifiers[i]);
+        var ct = gamedatas.cutTrees[i];
+        this.cutPileStocks[ct.player_id].addCard({
+          id: ct.cut_tree_id,
+          card_type_arg: ct.card_type_arg,
+        });
       }
     }
   }
@@ -394,173 +426,6 @@ export class Game {
     }
   }
 
-  displayCutTree(player_id, cutTree) {
-    var area = $("cut_pile_" + player_id);
-    if (!area) return;
-
-    var treeDef = this.gamedatas.treeCards[cutTree.card_type_arg];
-    if (!treeDef) return;
-
-    var spritePosition = treeDef.sprite_position || 0;
-    var cardsPerRow = 4;
-    var col = spritePosition % cardsPerRow;
-    var row = Math.floor(spritePosition / cardsPerRow);
-    var totalRows = 2;
-
-    var bgPosXPct = cardsPerRow > 1 ? (col * 100) / (cardsPerRow - 1) : 0;
-    var bgPosYPct = totalRows > 1 ? (row * 100) / (totalRows - 1) : 0;
-    var bgSizeWidth = cardsPerRow * this.cardWidth;
-
-    var html =
-      '<div class="play_area_card" id="cut_tree_' +
-      (cutTree.cut_tree_id || cutTree.card_type_arg + "_" + player_id) +
-      '" style="' +
-      "width: " +
-      this.cardWidth +
-      "px; " +
-      "height: " +
-      this.cardHeight +
-      "px; " +
-      "background-image: url(" +
-      g_gamethemeurl +
-      "img/tree_cards.jpg); " +
-      "background-position: " +
-      bgPosXPct +
-      "% " +
-      bgPosYPct +
-      "%; " +
-      "background-size: " +
-      bgSizeWidth +
-      'px auto;">' +
-      '<div class="card_label">' +
-      treeDef.name +
-      " (" +
-      (cutTree.points_value || treeDef.points) +
-      " pts)</div></div>";
-
-    area.insertAdjacentHTML("beforeend", html);
-  }
-
-  createPlayAreaCard(cardDefId, cardId, label) {
-    var cardDef = this.gamedatas.jackCards[cardDefId];
-    if (!cardDef) return "";
-
-    var spritePosition = cardDef.sprite_position || 0;
-    var cardsPerRow = 9;
-
-    var col = spritePosition % cardsPerRow;
-    var row = Math.floor(spritePosition / cardsPerRow);
-    var totalRows = 5;
-
-    var bgPosXPct = cardsPerRow > 1 ? (col * 100) / (cardsPerRow - 1) : 0;
-    var bgPosYPct = totalRows > 1 ? (row * 100) / (totalRows - 1) : 0;
-    var bgSizeWidth = cardsPerRow * this.cardWidth;
-
-    return (
-      '<div class="play_area_card" id="play_card_' +
-      cardId +
-      '" style="' +
-      "width: " +
-      this.cardWidth +
-      "px; " +
-      "height: " +
-      this.cardHeight +
-      "px; " +
-      "background-image: url(" +
-      g_gamethemeurl +
-      "img/red_cards.jpg); " +
-      "background-position: " +
-      bgPosXPct +
-      "% " +
-      bgPosYPct +
-      "%; " +
-      "background-size: " +
-      bgSizeWidth +
-      "px auto;" +
-      '">' +
-      '<div class="card_label">' +
-      label +
-      "</div>" +
-      "</div>"
-    );
-  }
-
-  displayEquipment(player_id, equipment) {
-    var area = $("equipment_area_" + player_id);
-    if (!area) return;
-
-    var cardDefId = equipment.card_type_arg;
-    if (!cardDefId) {
-      var card = this.gamedatas.cards
-        ? this.gamedatas.cards[equipment.card_id]
-        : null;
-      if (card) cardDefId = card.type_arg;
-    }
-
-    var cardDef = cardDefId ? this.gamedatas.jackCards[cardDefId] : null;
-    var label = cardDef ? cardDef.name : equipment.equipment_type;
-
-    var html = this.createPlayAreaCard(cardDefId, equipment.card_id, label);
-    if (html) {
-      area.insertAdjacentHTML("beforeend", html);
-    }
-  }
-
-  displayHelp(player_id, helpCard) {
-    var area = $("help_area_" + player_id);
-    if (!area) return;
-
-    var cardDefId = helpCard.card_type_arg;
-    if (!cardDefId) {
-      var card = this.gamedatas.cards
-        ? this.gamedatas.cards[helpCard.card_id]
-        : null;
-      if (card) cardDefId = card.type_arg;
-    }
-
-    var cardDef = cardDefId ? this.gamedatas.jackCards[cardDefId] : null;
-    var label = cardDef ? cardDef.name : helpCard.help_type;
-
-    var html = this.createPlayAreaCard(cardDefId, helpCard.card_id, label);
-    if (html) {
-      area.insertAdjacentHTML("beforeend", html);
-    }
-  }
-
-  displayModifier(player_id, modifier) {
-    var area = $("modifier_area_" + player_id);
-    if (!area) return;
-
-    var cardDefId = modifier.card_type_arg;
-    if (!cardDefId) {
-      var card = this.gamedatas.cards
-        ? this.gamedatas.cards[modifier.card_id]
-        : null;
-      if (card) cardDefId = card.type_arg;
-    }
-
-    var cardDef = cardDefId ? this.gamedatas.jackCards[cardDefId] : null;
-    var label = cardDef
-      ? cardDef.name +
-        " (" +
-        (modifier.modifier_value > 0 ? "+" : "") +
-        modifier.modifier_value +
-        ")"
-      : modifier.modifier_type;
-
-    var html = this.createPlayAreaCard(cardDefId, modifier.card_id, label);
-    if (html) {
-      area.insertAdjacentHTML("beforeend", html);
-    }
-  }
-
-  removePlayAreaCard(card_id) {
-    var cardEl = $("play_card_" + card_id);
-    if (cardEl) {
-      cardEl.remove();
-    }
-  }
-
   setSkipTurnIndicator(player_id, active) {
     var indicator = $("skip_indicator_" + player_id);
 
@@ -606,7 +471,7 @@ export class Game {
     if (!this.bga.players.isCurrentPlayerActive()) return;
 
     if (this.playerHand) {
-      this.playerHand.setSelectionMode(1);
+      this.playerHand.setSelectionMode("single");
     }
   }
 
@@ -636,7 +501,15 @@ export class Game {
     var myTrees = args.my_trees || [];
     for (var i = 0; i < myTrees.length; i++) {
       var tree = myTrees[i];
-      var el = $("cut_tree_" + tree.cut_tree_id);
+      var el = document.getElementById(
+        this.treeCardManager.getId({ id: tree.cut_tree_id }) + "",
+      );
+      if (!el) {
+        // Try the bga-cards generated element
+        el = $("cut_pile_" + this.bga.players.getCurrentPlayerId());
+        if (el)
+          el = el.querySelector('[data-card-id="' + tree.cut_tree_id + '"]');
+      }
       if (el) {
         el.classList.add("selectable");
         ((treeId) => {
@@ -650,7 +523,14 @@ export class Game {
     var targetTrees = args.target_trees || [];
     for (var i = 0; i < targetTrees.length; i++) {
       var tree = targetTrees[i];
-      var el = $("cut_tree_" + tree.cut_tree_id);
+      var el = document.getElementById(
+        this.treeCardManager.getId({ id: tree.cut_tree_id }) + "",
+      );
+      if (!el) {
+        el = document.querySelector(
+          '[data-card-id="' + tree.cut_tree_id + '"]',
+        );
+      }
       if (el) {
         el.classList.add("selectable");
         ((treeId) => {
@@ -670,7 +550,7 @@ export class Game {
         ? this.switchTagsSelection.myTreeId
         : this.switchTagsSelection.targetTreeId;
     if (prevId) {
-      var prevEl = $("cut_tree_" + prevId);
+      var prevEl = document.querySelector('[data-card-id="' + prevId + '"]');
       if (prevEl) prevEl.classList.remove("selected");
     }
 
@@ -680,7 +560,7 @@ export class Game {
       this.switchTagsSelection.targetTreeId = cutTreeId;
     }
 
-    var el = $("cut_tree_" + cutTreeId);
+    var el = document.querySelector('[data-card-id="' + cutTreeId + '"]');
     if (el) el.classList.add("selected");
 
     var btn = $("button_confirm_switch");
@@ -724,35 +604,23 @@ export class Game {
     if (!this.bga.actions.checkPossibleActions("actPlayReaction")) return;
 
     if (this.playerHand) {
-      this.playerHand.setSelectionMode(1);
+      this.playerHand.setSelectionMode("single");
     }
   }
 
-  onEnteringChoppingRollResult(args) {
+  async onEnteringChoppingRollResult(args) {
     if (!this.bga.players.isCurrentPlayerActive()) return;
 
-    var html = '<div class="chop_roll_results">';
+    // Remove any previous roll area
+    var existing = $("chop_roll_area");
+    if (existing) existing.remove();
 
-    var diceResults = args.dice_results || [];
-    if (diceResults.length > 0) {
-      html += "<h3>" + _("Chopping Roll") + "</h3>";
-      html += '<div class="dice_row">';
-      for (var i = 0; i < diceResults.length; i++) {
-        html += this.formatDieResult(diceResults[i]);
-      }
-      html += "</div>";
-    }
+    var html = '<div id="chop_roll_area" class="chop_roll_results">';
+    html += "<h3>" + _("Chopping Roll") + "</h3>";
+    html += '<div id="chop_dice_stock" class="dice_row"></div>';
 
     if (args.apprentice_die !== null && args.apprentice_die !== undefined) {
-      var apprenticeText = args.apprentice_chop ? _("Chop!") : _("No chop");
-      html +=
-        '<div class="apprentice_row">' +
-        _("Apprentice") +
-        ": " +
-        this.formatDieResult(args.apprentice_die) +
-        " &mdash; " +
-        apprenticeText +
-        "</div>";
+      html += '<div id="apprentice_dice_stock" class="apprentice_row"></div>';
     }
 
     html +=
@@ -780,35 +648,41 @@ export class Game {
         "</div>";
     }
 
-    html +=
-      '<div class="chop_roll_continue">' +
-      '<a href="#" id="button_modal_continue" class="bgabutton bgabutton_blue">' +
-      _("Continue") +
-      "</a></div>";
-
     html += "</div>";
 
-    this.chopResultDialog = new ebg.popindialog();
-    this.chopResultDialog.create("chopResultDialog");
-    this.chopResultDialog.setTitle(_("Chopping Roll Results"));
-    this.chopResultDialog.setMaxWidth(400);
-    this.chopResultDialog.setContent(html);
-    this.chopResultDialog.hideCloseIcon();
-    this.chopResultDialog.show();
-
-    $("button_modal_continue").addEventListener("click", (evt) => {
-      this.onConfirmChopResult(evt);
-    });
-  }
-
-  formatDieResult(value) {
-    var cls = "die_miss";
-    if (value >= 4) {
-      cls = "die_chop";
-    } else if (value <= 2) {
-      cls = "die_break";
+    // Insert inside center area (to the right of the decks)
+    var centerArea = $("center_area");
+    if (centerArea) {
+      centerArea.insertAdjacentHTML("beforeend", html);
     }
-    return '<span class="die_result ' + cls + '">' + value + "</span>";
+
+    // Create dice stocks, add dice, then roll
+    var diceResults = args.dice_results || [];
+    if (diceResults.length > 0) {
+      var diceData = diceResults.map((face, i) => ({ id: i + 1, face: face }));
+      this.chopDiceStock = new BgaDice.LineStock(
+        this.diceManager,
+        document.getElementById("chop_dice_stock"),
+      );
+      await this.chopDiceStock.addDice(diceData);
+      await this.chopDiceStock.rollDice(diceData);
+    }
+
+    if (args.apprentice_die !== null && args.apprentice_die !== undefined) {
+      var apprenticeData = [{ id: 100, face: args.apprentice_die }];
+      this.apprenticeDiceStock = new BgaDice.LineStock(
+        this.diceManager,
+        document.getElementById("apprentice_dice_stock"),
+      );
+      await this.apprenticeDiceStock.addDice(apprenticeData);
+      await this.apprenticeDiceStock.rollDice(apprenticeData);
+
+      var apprenticeText = args.apprentice_chop ? _("Chop!") : _("No chop");
+      var label = document.createElement("span");
+      label.className = "apprentice_label";
+      label.textContent = _("Apprentice") + ": " + apprenticeText;
+      document.getElementById("apprentice_dice_stock").appendChild(label);
+    }
   }
 
   onLeavingState(stateName) {
@@ -825,8 +699,15 @@ export class Game {
 
       case "playerTurn":
         if (this.playerHand) {
-          this.playerHand.setSelectionMode(0);
+          this.playerHand.setSelectionMode("none");
         }
+        break;
+
+      case "choppingRollResult":
+        var rollArea = $("chop_roll_area");
+        if (rollArea) rollArea.remove();
+        this.chopDiceStock = null;
+        this.apprenticeDiceStock = null;
         break;
     }
   }
@@ -843,12 +724,10 @@ export class Game {
   }
 
   onLeavingSelectTreesToSwitch() {
-    document
-      .querySelectorAll(".play_area_card.selectable")
-      .forEach(function (el) {
-        el.classList.remove("selectable");
-        el.classList.remove("selected");
-      });
+    document.querySelectorAll(".selectable").forEach(function (el) {
+      el.classList.remove("selectable");
+      el.classList.remove("selected");
+    });
     this.switchTagsSelection = null;
   }
 
@@ -929,6 +808,13 @@ export class Game {
           break;
 
         case "choppingRollResult":
+          this.bga.statusBar.addActionButton(
+            _("Continue"),
+            () => {
+              this.onConfirmChopResult();
+            },
+            { id: "button_confirm_chop" },
+          );
           break;
       }
     }
@@ -938,7 +824,7 @@ export class Game {
   //// Utility methods
 
   onPlayerHandSelectionChanged() {
-    var items = this.playerHand.getSelectedItems();
+    var items = this.playerHand.getSelection();
 
     var btnPlay = $("button_play_card");
     if (btnPlay) btnPlay.remove();
@@ -1105,10 +991,10 @@ export class Game {
       return;
     }
 
-    if (this.chopResultDialog) {
-      this.chopResultDialog.destroy();
-      this.chopResultDialog = null;
-    }
+    var rollArea = $("chop_roll_area");
+    if (rollArea) rollArea.remove();
+    this.chopDiceStock = null;
+    this.apprenticeDiceStock = null;
 
     this.bga.actions.performAction("actConfirmChopResult");
   }
@@ -1125,46 +1011,59 @@ export class Game {
     });
   }
 
-  notif_cardPlayed(args) {
+  async notif_cardPlayed(args) {
     console.log("notif_cardPlayed", args);
 
+    // Equipment, help, and plus_minus cards are moved from hand by their
+    // placement handler (equipmentPlaced, helpPlaced, modifierApplied)
+    // using fromStock for a smooth animation. Action and sasquatch cards
+    // don't place anywhere, so animate them from hand to discard pile.
+    var placementTypes = ["equipment", "help", "plus_minus"];
     if (
-      args.player_id == this.bga.players.getActivePlayerId() &&
+      placementTypes.indexOf(args.card_type) === -1 &&
+      args.player_id == this.bga.players.getCurrentPlayerId() &&
       this.playerHand
     ) {
-      this.playerHand.removeFromStockById(args.card_id);
+      var card = { id: args.card_id, card_type_arg: args.card_type_arg };
+      await this.discardPile.addCard(card, {
+        fromStock: this.playerHand,
+      });
     }
   }
 
-  notif_cardDiscarded(args) {
+  async notif_cardDiscarded(args) {
     console.log("notif_cardDiscarded", args);
 
     if (
-      args.player_id == this.bga.players.getActivePlayerId() &&
+      args.player_id == this.bga.players.getCurrentPlayerId() &&
       this.playerHand
     ) {
-      this.playerHand.removeFromStockById(args.card_id);
+      var card = { id: args.card_id, card_type_arg: args.card_type_arg };
+      await this.discardPile.addCard(card, {
+        fromStock: this.playerHand,
+      });
     }
   }
 
-  notif_cardDrawn(args) {
+  async notif_cardDrawn(args) {
     console.log("notif_cardDrawn", args);
 
     if (this.playerHand) {
-      this.addCardToHand(args.card);
+      var card = { id: args.card.id, card_type_arg: args.card.type_arg };
+      await this.playerHand.addCard(card, { fromStock: this.jackDeck });
     }
   }
 
-  notif_cardReturned(args) {
+  async notif_cardReturned(args) {
     console.log("notif_cardReturned", args);
 
     if (
       args.player_id == this.bga.players.getCurrentPlayerId() &&
       this.playerHand
     ) {
-      this.addCardToHand({
+      await this.playerHand.addCard({
         id: args.card_id,
-        type_arg: args.card_type_arg,
+        card_type_arg: args.card_type_arg,
       });
     }
 
@@ -1186,14 +1085,14 @@ export class Game {
     }
   }
 
-  notif_reactionPlayed(args) {
+  async notif_reactionPlayed(args) {
     console.log("notif_reactionPlayed", args);
 
     if (
       args.player_id == this.bga.players.getCurrentPlayerId() &&
       this.playerHand
     ) {
-      this.playerHand.removeFromStockById(args.card_id);
+      this.playerHand.removeCard({ id: args.card_id });
     }
   }
 
@@ -1201,7 +1100,7 @@ export class Game {
     console.log("notif_reactionPassed", args);
   }
 
-  notif_treeDrawn(args) {
+  async notif_treeDrawn(args) {
     console.log("notif_treeDrawn", args);
 
     var tree = {
@@ -1215,6 +1114,17 @@ export class Game {
     };
 
     this.displayTree(args.player_id, tree);
+
+    // Animate from tree deck to tree area
+    var treeEl = $("tree_" + args.player_id);
+    var treeDeck = $("tree_deck");
+    if (treeEl && treeDeck) {
+      await this.animationManager.slideAndAttach(
+        treeEl,
+        $("tree_area_" + args.player_id),
+        { fromElement: treeDeck },
+      );
+    }
   }
 
   notif_treeChopped(args) {
@@ -1223,19 +1133,22 @@ export class Game {
     this.updateChopProgress(args.player_id, args.chops_current);
   }
 
-  notif_treeCompleted(args) {
+  async notif_treeCompleted(args) {
     console.log("notif_treeCompleted", args);
 
     var treeArea = $("tree_area_" + args.player_id);
+
     if (treeArea) {
       treeArea.innerHTML = "";
     }
 
     if (args.card_type_arg) {
-      this.displayCutTree(args.player_id, {
+      var card = {
+        id: args.tree_id,
         card_type_arg: args.card_type_arg,
-        points_value: args.points,
-        cut_tree_id: args.tree_id,
+      };
+      await this.cutPileStocks[args.player_id].addCard(card, {
+        fromElement: treeArea,
       });
     }
 
@@ -1252,26 +1165,26 @@ export class Game {
     }
   }
 
-  notif_equipmentPlaced(args) {
+  async notif_equipmentPlaced(args) {
     console.log("notif_equipmentPlaced", args);
-    this.displayEquipment(args.player_id, {
-      card_id: args.card_id,
-      card_type_arg: args.card_type_arg,
-      equipment_type: args.equipment_type,
+    var card = { id: args.card_id, card_type_arg: args.card_type_arg };
+    await this.equipmentStocks[args.player_id].addCard(card, {
+      fromStock: this.playerHand,
     });
   }
 
-  notif_equipmentDiscarded(args) {
+  async notif_equipmentDiscarded(args) {
     console.log("notif_equipmentDiscarded", args);
-    this.removePlayAreaCard(args.card_id);
+    var card = { id: args.card_id, card_type_arg: args.card_type_arg };
+    var stock = this.equipmentStocks[args.player_id];
+    await this.discardPile.addCard(card, { fromStock: stock });
   }
 
-  notif_modifierApplied(args) {
+  async notif_modifierApplied(args) {
     console.log("notif_modifierApplied", args);
-    this.displayModifier(args.player_id, {
-      card_id: args.card_id,
-      card_type_arg: args.card_type_arg,
-      modifier_value: args.modifier_value,
+    var card = { id: args.card_id, card_type_arg: args.card_type_arg };
+    await this.modifierStocks[args.player_id].addCard(card, {
+      fromStock: this.playerHand,
     });
   }
 
@@ -1279,47 +1192,44 @@ export class Game {
     console.log("notif_modifierPrevented", args);
   }
 
-  notif_helpPlaced(args) {
+  async notif_helpPlaced(args) {
     console.log("notif_helpPlaced", args);
     if (args.replaced_card_id) {
-      this.removePlayAreaCard(args.replaced_card_id);
+      this.helpStocks[args.player_id].removeCard({ id: args.replaced_card_id });
     }
-    this.displayHelp(args.player_id, {
-      card_id: args.card_id,
-      card_type_arg: args.card_type_arg,
-      help_type: args.help_type,
+    var card = { id: args.card_id, card_type_arg: args.card_type_arg };
+    await this.helpStocks[args.player_id].addCard(card, {
+      fromStock: this.playerHand,
     });
   }
 
-  notif_helpDiscarded(args) {
+  async notif_helpDiscarded(args) {
     console.log("notif_helpDiscarded", args);
-    this.removePlayAreaCard(args.card_id);
+    var card = { id: args.card_id, card_type_arg: args.card_type_arg };
+    var stock = this.helpStocks[args.player_id];
+    await this.discardPile.addCard(card, { fromStock: stock });
   }
 
-  notif_helpStolen(args) {
+  async notif_helpStolen(args) {
     console.log("notif_helpStolen", args);
-    this.removePlayAreaCard(args.card_id);
+    var fromStock = this.helpStocks[args.target_id];
     if (args.replaced_card_id) {
-      this.removePlayAreaCard(args.replaced_card_id);
+      this.helpStocks[args.player_id].removeCard({ id: args.replaced_card_id });
     }
-    this.displayHelp(args.player_id, {
-      card_id: args.card_id,
-      card_type_arg: args.card_type_arg,
-      help_type: args.help_type,
-    });
+    var card = { id: args.card_id, card_type_arg: args.card_type_arg };
+    await this.helpStocks[args.player_id].addCard(card, { fromStock });
   }
 
-  notif_equipmentStolen(args) {
+  async notif_equipmentStolen(args) {
     console.log("notif_equipmentStolen", args);
-    this.removePlayAreaCard(args.card_id);
+    var fromStock = this.equipmentStocks[args.target_id];
     if (args.replaced_card_id) {
-      this.removePlayAreaCard(args.replaced_card_id);
+      this.equipmentStocks[args.player_id].removeCard({
+        id: args.replaced_card_id,
+      });
     }
-    this.displayEquipment(args.player_id, {
-      card_id: args.card_id,
-      card_type_arg: args.card_type_arg,
-      equipment_type: args.equipment_type,
-    });
+    var card = { id: args.card_id, card_type_arg: args.card_type_arg };
+    await this.equipmentStocks[args.player_id].addCard(card, { fromStock });
   }
 
   notif_axeBreakFailed(args) {
@@ -1337,31 +1247,31 @@ export class Game {
     }
   }
 
-  notif_switchTags(args) {
+  async notif_switchTags(args) {
     console.log("notif_switchTags", args);
 
     if (args.player_tree) {
-      var el = $("cut_tree_" + args.player_tree.cut_tree_id);
-      if (el) el.remove();
+      this.cutPileStocks[args.player_id].removeCard({
+        id: args.player_tree.cut_tree_id,
+      });
     }
     if (args.target_tree) {
-      var el = $("cut_tree_" + args.target_tree.cut_tree_id);
-      if (el) el.remove();
+      this.cutPileStocks[args.target_id].removeCard({
+        id: args.target_tree.cut_tree_id,
+      });
     }
 
     if (args.player_tree) {
-      this.displayCutTree(args.target_id, {
+      await this.cutPileStocks[args.target_id].addCard({
+        id: args.player_tree.cut_tree_id,
         card_type_arg: args.player_tree.card_type_arg,
-        points_value: args.player_tree.points_value,
-        cut_tree_id: args.player_tree.cut_tree_id,
       });
     }
 
     if (args.target_tree) {
-      this.displayCutTree(args.player_id, {
+      await this.cutPileStocks[args.player_id].addCard({
+        id: args.target_tree.cut_tree_id,
         card_type_arg: args.target_tree.card_type_arg,
-        points_value: args.target_tree.points_value,
-        cut_tree_id: args.target_tree.cut_tree_id,
       });
     }
 
@@ -1383,7 +1293,7 @@ export class Game {
     this.setSkipTurnIndicator(args.player_id, true);
   }
 
-  notif_treeTaken(args) {
+  async notif_treeTaken(args) {
     console.log("notif_treeTaken", args);
 
     var targetTreeArea = $("tree_area_" + args.player_id);
@@ -1402,6 +1312,15 @@ export class Game {
         points: args.tree.points_value,
       };
       this.displayTree(args.active_id, tree);
+
+      var treeEl = $("tree_" + args.active_id);
+      if (treeEl && targetTreeArea) {
+        await this.animationManager.slideAndAttach(
+          treeEl,
+          $("tree_area_" + args.active_id),
+          { fromElement: targetTreeArea },
+        );
+      }
     }
   }
 
@@ -1432,9 +1351,11 @@ export class Game {
     }
   }
 
-  notif_modifierRemoved(args) {
+  async notif_modifierRemoved(args) {
     console.log("notif_modifierRemoved", args);
-    this.removePlayAreaCard(args.card_id);
+    var card = { id: args.card_id, card_type_arg: args.card_type_arg };
+    var stock = this.modifierStocks[args.player_id];
+    await this.discardPile.addCard(card, { fromStock: stock });
   }
 
   notif_playerSkipped(args) {
