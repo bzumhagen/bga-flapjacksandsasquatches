@@ -252,47 +252,7 @@
     flex: 2;
     min-width: 150px;
     min-height: 200px;
-}
-
-.tree_display {
-    position: relative;
-    display: inline-block;
-}
-
-.tree_card_visual {
-    display: block;
-}
-
-.tree_def_overlay {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: rgba(0, 0, 0, 0.7);
-    color: white;
-    padding: 3px 5px;
-    font-size: 9px;
-    line-height: 1.2;
-}
-
-.tree_name {
-    font-weight: bold;
-    margin-bottom: 2px;
-    font-size: 10px;
-}
-
-.tree_progress {
-    margin-bottom: 2px;
-}
-
-.chops_current {
-    font-weight: bold;
-    color: #4caf50;
-}
-
-.tree_points {
-    font-size: 8px;
-    color: #ffd700;
+    display: grid;
 }
 
 .equipment_area {
@@ -392,63 +352,46 @@
     z-index: 10;
 }
 
-/* Tree card display */
-.tree_card {
-    background: linear-gradient(135deg, #228b22 0%, #006400 100%);
-    color: white;
-    padding: 15px;
-    border-radius: 10px;
-    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
-    min-width: 150px;
+/* Tree area: tree card and token container share the same grid cell */
+.tree_area > * {
+    grid-area: 1 / 1;
 }
 
-.tree_name {
-    font-weight: bold;
-    font-size: 16px;
-    margin-bottom: 10px;
-    text-align: center;
-}
-
-.tree_progress {
-    font-size: 24px;
-    font-weight: bold;
-    text-align: center;
-    margin: 10px 0;
-    padding: 5px;
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 5px;
-}
-
-.chops_current {
-    color: #ffff00;
-}
-
-.tree_points {
-    text-align: center;
-    font-size: 14px;
-    margin-top: 10px;
-    padding: 5px;
-    background: rgba(255, 255, 255, 0.15);
-    border-radius: 5px;
-}
-
-.chop_markers {
+/* Chop token container: overlays on the tree card */
+.chop_token_container {
     display: flex;
     flex-wrap: wrap;
-    gap: 5px;
-    margin-top: 10px;
-    justify-content: center;
+    gap: 3px;
+    align-self: end;
+    padding: 5px;
+    z-index: 10;
+    pointer-events: none;
 }
 
-/* Chop tokens */
-.chop_token {
-    width: 15px;
-    height: 15px;
-    background: #ffd700;
-    border: 2px solid #ffa500;
+/* Chop token: green circle with text */
+.fj-chop-token {
+    width: 28px !important;
+    height: 28px !important;
+    --bga-cards_card-border-radius: 50%;
+}
+
+.fj-chop-token .bga-cards_card-sides,
+.fj-chop-token-front,
+.fj-chop-token-back {
     border-radius: 50%;
-    display: inline-block;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.fj-chop-token-front {
+    background: #2e7d32;
+    border: 2px solid #1b5e20;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    color: white;
+    font-size: 7px;
+    font-weight: 900;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-transform: uppercase;
 }
 
 /* Chopping roll results */

@@ -33,6 +33,8 @@ export class Game {
     this.modifierStocks = {};
     this.helpStocks = {};
     this.cutPileStocks = {};
+    this.treeStocks = {};
+    this.chopTokenStocks = {};
 
     // Track current game state
     this.pendingTarget = null;
@@ -116,6 +118,23 @@ export class Game {
       },
     });
 
+    // Chop token manager (small green circles with "Chop" text)
+    this.chopTokenManager = new BgaCards.Manager({
+      animationManager: this.animationManager,
+      type: "fj-chop-token",
+      cardWidth: 28,
+      cardHeight: 28,
+      cardBorderRadius: "50%",
+      getId: (token) => token.id,
+      isCardVisible: () => true,
+      setupDiv: (token, div) => {
+        div.classList.add("fj-chop-token");
+      },
+      setupFrontDiv: (token, div) => {
+        div.textContent = _("Chop");
+      },
+    });
+
     // Build main game area HTML
     var playerAreasHtml = "";
     var directions = ["S", "W", "N", "E", "S2", "W2", "N2", "E2"];
@@ -139,7 +158,14 @@ export class Game {
         '<div class="player_play_area">' +
         '<div class="tree_area" id="tree_area_' +
         player_id +
+        '">' +
+        '<div class="tree_card_slot" id="tree_card_slot_' +
+        player_id +
         '"></div>' +
+        '<div class="chop_token_container" id="chop_tokens_' +
+        player_id +
+        '"></div>' +
+        "</div>" +
         '<div class="equipment_area" id="equipment_area_' +
         player_id +
         '"></div>' +
@@ -206,6 +232,18 @@ export class Game {
       this.cutPileStocks[player_id] = new BgaCards.LineStock(
         this.treeCardManager,
         $("cut_pile_" + player_id),
+      );
+
+      // Active tree stock (one card at a time)
+      this.treeStocks[player_id] = new BgaCards.LineStock(
+        this.treeCardManager,
+        $("tree_card_slot_" + player_id),
+      );
+
+      // Chop token stock overlaid on tree card via grid
+      this.chopTokenStocks[player_id] = new BgaCards.LineStock(
+        this.chopTokenManager,
+        $("chop_tokens_" + player_id),
       );
     }
 
@@ -282,13 +320,10 @@ export class Game {
       for (var i in gamedatas.activeTrees) {
         var activeTree = gamedatas.activeTrees[i];
         var tree = {
-          id: activeTree.tree_id,
           card_id: activeTree.card_id,
           card_type_arg: activeTree.card_type_arg,
-          type: activeTree.tree_type,
-          chops_required: activeTree.chops_required,
-          chops_current: activeTree.chop_count,
-          points: activeTree.points_value,
+          chops_current: parseInt(activeTree.chop_count) || 0,
+          chops_required: parseInt(activeTree.chops_required) || 0,
         };
         this.displayTree(activeTree.player_id, tree);
       }
@@ -335,94 +370,31 @@ export class Game {
     }
   }
 
-  displayTree(player_id, tree) {
-    var treeArea = $("tree_area_" + player_id);
-    if (!treeArea) return;
+  displayTree(player_id, tree, animationSettings) {
+    if (!this.treeStocks[player_id]) return;
 
-    treeArea.innerHTML = "";
+    // Clear existing tree card and tokens
+    this.treeStocks[player_id].removeAll();
+    this.chopTokenStocks[player_id].removeAll();
 
-    var treeDef = tree.card_type_arg
-      ? this.gamedatas.treeCards[tree.card_type_arg]
-      : null;
+    var card = { id: tree.card_id, card_type_arg: tree.card_type_arg };
+    this.treeStocks[player_id].addCard(card, animationSettings);
 
-    if (!treeDef) {
-      console.error(
-        "Tree definition not found for card_type_arg: " + tree.card_type_arg,
-      );
-      return;
-    }
-
-    var spritePosition = treeDef.sprite_position || 0;
-    var cardsPerRow = 4;
-
-    var col = spritePosition % cardsPerRow;
-    var row = Math.floor(spritePosition / cardsPerRow);
-
-    var bgPosXPct = (col * 100) / (cardsPerRow - 1);
-    var bgPosYPct = row * 100;
-
-    var bgSizeWidth = cardsPerRow * this.cardWidth;
-
-    var cardHtml =
-      '<div class="tree_card_visual" style="' +
-      "width: " +
-      this.cardWidth +
-      "px; " +
-      "height: " +
-      this.cardHeight +
-      "px; " +
-      "background-image: url(" +
-      g_gamethemeurl +
-      "img/tree_cards.jpg); " +
-      "background-position: " +
-      bgPosXPct +
-      "% " +
-      bgPosYPct +
-      "%; " +
-      "background-size: " +
-      bgSizeWidth +
-      "px auto;" +
-      '"></div>';
-
-    var html =
-      '<div class="tree_display" id="tree_' +
-      player_id +
-      '" data-tree-id="' +
-      tree.id +
-      '">' +
-      cardHtml +
-      '<div class="tree_def_overlay">' +
-      '<div class="tree_name">' +
-      treeDef.name +
-      "</div>" +
-      '<div class="tree_progress">' +
-      '<span class="chops_current" id="chops_current_' +
-      player_id +
-      '">0</span> / ' +
-      '<span class="chops_required">' +
-      treeDef.chops_required +
-      "</span>" +
-      "</div>" +
-      '<div class="tree_points">Worth: ' +
-      treeDef.points +
-      " points</div>" +
-      '<div class="chop_markers" id="chop_markers_' +
-      player_id +
-      '"></div>' +
-      "</div>" +
-      "</div>";
-
-    treeArea.insertAdjacentHTML("beforeend", html);
-
-    if (tree.chops_current) {
+    // Add chop tokens for current progress
+    if (tree.chops_current > 0) {
       this.updateChopProgress(player_id, tree.chops_current);
     }
   }
 
   updateChopProgress(player_id, chops) {
-    var chopCounter = $("chops_current_" + player_id);
-    if (chopCounter) {
-      chopCounter.innerHTML = chops;
+    var stock = this.chopTokenStocks[player_id];
+    if (!stock) return;
+
+    var currentCount = stock.getCards().length;
+
+    // Add tokens up to the new count
+    for (var i = currentCount + 1; i <= chops; i++) {
+      stock.addCard({ id: player_id + "_chop_" + i });
     }
   }
 
@@ -1104,27 +1076,13 @@ export class Game {
     console.log("notif_treeDrawn", args);
 
     var tree = {
-      id: args.tree_id,
       card_id: args.card_id,
       card_type_arg: args.card_type_arg,
-      type: args.tree_type,
-      chops_required: args.chops_required,
       chops_current: 0,
-      points: args.points,
+      chops_required: args.chops_required,
     };
 
-    this.displayTree(args.player_id, tree);
-
-    // Animate from tree deck to tree area
-    var treeEl = $("tree_" + args.player_id);
-    var treeDeck = $("tree_deck");
-    if (treeEl && treeDeck) {
-      await this.animationManager.slideAndAttach(
-        treeEl,
-        $("tree_area_" + args.player_id),
-        { fromElement: treeDeck },
-      );
-    }
+    this.displayTree(args.player_id, tree, { fromStock: this.treeDeck });
   }
 
   notif_treeChopped(args) {
@@ -1136,21 +1094,14 @@ export class Game {
   async notif_treeCompleted(args) {
     console.log("notif_treeCompleted", args);
 
-    var treeArea = $("tree_area_" + args.player_id);
+    this.chopTokenStocks[args.player_id].removeAll();
 
-    if (treeArea) {
-      treeArea.innerHTML = "";
-    }
-
-    if (args.card_type_arg) {
-      var card = {
-        id: args.tree_id,
-        card_type_arg: args.card_type_arg,
-      };
-      await this.cutPileStocks[args.player_id].addCard(card, {
-        fromElement: treeArea,
-      });
-    }
+    var treeStock = this.treeStocks[args.player_id];
+    var card = { id: args.tree_id, card_type_arg: args.card_type_arg };
+    await this.cutPileStocks[args.player_id].addCard(card, {
+      fromStock: treeStock,
+    });
+    treeStock.removeAll();
 
     if (this["scoreCounter_" + args.player_id]) {
       this["scoreCounter_" + args.player_id].toValue(args.new_score);
@@ -1240,10 +1191,8 @@ export class Game {
     console.log("notif_forestFire", args);
     var players = args.affected_players || [];
     for (var i = 0; i < players.length; i++) {
-      var treeArea = $("tree_area_" + players[i]);
-      if (treeArea) {
-        treeArea.innerHTML = "";
-      }
+      this.treeStocks[players[i]].removeAll();
+      this.chopTokenStocks[players[i]].removeAll();
     }
   }
 
@@ -1296,31 +1245,20 @@ export class Game {
   async notif_treeTaken(args) {
     console.log("notif_treeTaken", args);
 
-    var targetTreeArea = $("tree_area_" + args.player_id);
-    if (targetTreeArea) {
-      targetTreeArea.innerHTML = "";
-    }
+    // Clear target's tree and tokens
+    this.chopTokenStocks[args.player_id].removeAll();
+    this.treeStocks[args.player_id].removeAll();
 
     if (args.tree) {
       var tree = {
-        id: args.tree.tree_id,
         card_id: args.tree.card_id,
         card_type_arg: args.tree.card_type_arg,
-        type: args.tree.tree_type,
-        chops_required: args.tree.chops_required,
         chops_current: args.tree.chop_count,
-        points: args.tree.points_value,
+        chops_required: args.tree.chops_required,
       };
-      this.displayTree(args.active_id, tree);
-
-      var treeEl = $("tree_" + args.active_id);
-      if (treeEl && targetTreeArea) {
-        await this.animationManager.slideAndAttach(
-          treeEl,
-          $("tree_area_" + args.active_id),
-          { fromElement: targetTreeArea },
-        );
-      }
+      this.displayTree(args.active_id, tree, {
+        fromElement: $("tree_area_" + args.player_id),
+      });
     }
   }
 
